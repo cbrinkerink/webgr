@@ -1,14 +1,8 @@
 <html>
-<title>A simple visibility simulation</title>
+<title>WebGR</title>
 <body>
-<h1>A simple visibility simulation</h1>
-<p>Below, we show an interactive canvas with a sky image of some hypothetical radio source on the left, consisting of 10 separate source components. On the right, the colourful area shows the interferometric visibility map that corresponds to the sky image on the left. All image components can be edited or removed to see what effect they have on the visibility map. If you're starting out, try using only a single image component by setting all the others to zero strength.</p>
-
-<p></p>
-
-<p>Note that this is a very early version: I have not yet included sensible information such as the field of view or the extent of the visibility map in terms of observing wavelengths. I still need to figure out a nice way to present these things. :) If you have questions, comments or suggestions for improvement and/or expansion, I will be happy to hear from you. Please contact me at my department email address (c dot brinkerink at astro dot ru dot nl).</p>
-
-<p>For a list of all controls, see bottom of page.</p>
+<h1>Flying around a Schwarzschild black hole</h1>
+<p>Use the canvas below to fly around a Schwarzschild black hole in real time!</p>
 <canvas id="canvas" width="1200" height="600"></canvas>
 
 <!-- vertex shader -->
@@ -36,7 +30,26 @@ precision mediump int;
 
 #define PI 3.1415926536
 
-uniform vec2 resolution;
+// This shader will need to do the following:
+
+// - Keep track of observer variables: position (schw), 4-velocity (schw), look direction (schw), up direction (schw).
+// - Update observer state and compute observer tetrad using the above variables.
+// - Transform local look vector (defined in local tetrad components) to global schwarzschild/BL coordinates.
+// - Calculate angle alpha between look vector and radial vector. Together with the radial position of the observer,
+//   this angle will determine where in the deflection map we have to look up our deflection angle.
+// - Look up deflection from deflection angle texture using observer radial position and alpha.
+// - Calculate 'final', deflected look direction.
+// - Look up the colour corresponding to the final look direction from the sky map or from a checkerboard pattern.
+
+// USEFUL FUNCTIONS:
+
+// - Metric function: takes 4 spacetime components, spits out 4x4 matrix with numerical metric components. Need two versions: contravariant and covariant!
+
+uniform vec2 resolution; // This variable stores our canvas dimensions, which is important for defining a relative coordinate for the pixel within the canvas.
+
+uniform mat4 g_uu;
+uniform mat4 g_dd;
+
 uniform int sourcetypes[10];
 uniform float xes[10];
 uniform float yes[10];
@@ -59,164 +72,13 @@ uniform float uvpoints[20];
 
 out vec4 fragColor;
 
-float bessel(float x, int n) {
-  if (n < 0) return 0.0;
-
-  float d = 1e-6;
-  float b = 0.;
-  if (abs(x) <= d) {
-    if (n != 0) return 0.;
-    return 1.;
-  }
-
-  float b1 = 0.;  // b1 is the value from the previous iteration
-  // Set up a starting order for recurrence
-  int m1 = int(abs(x)) + 6;
-  if (abs(x) > 5.) m1 = int(abs(1.4 * x + 60. / x));
-
-  int m2 = int(float(n) + 2. + abs(x) / 4.);
-  if (m1 > m2) m2 = m1;
-
-  // Apply recurrence down from current max order
-  int maxiters = 20;
-  int iter = 0;
-  while (iter < maxiters) {
-    float c3 = 0.;
-    float c2 = 1e-30;
-    float c4 = 0.;
-    int m8 = 1;
-    if (int(floor(float(m2)/2.)) * 2 == m2) m8 = -1;
-
-    int imax = m2 - 2;
-    for (int i = 1; i < imax + 1; i++) {
-      float c6 = 2. * (float(m2) - float(i)) * c2 / x - c3;
-      c3 = c2;
-      c2 = c6;
-      if (m2 - i - 1 == n) b = c6;
-      m8 = -1 * m8;
-      if (m8 > 0) c4 = c4 + 2. * c6;
-    }
-
-    float c6 = 2. * c2 / x - c3;
-    if (n == 0) b = c6;
-    c4 += c6;
-    b /= c4;
-    if (abs(b - b1) < d) return b;
-    b1 = b;
-    m2 += 3;
-    iter++;
-  }
-  return b;
-}
-
 void main() {
-  vec2 pos = vec2(4.0, 2.0) * gl_FragCoord.xy / resolution.xy - vec2(1.0, 1.0);
-  vec4 col = vec4(0., 0., 0., 1.);
-  if (pos.x < 1.) {
-    // Image plane
-    for (int i = 0; i < 10; i++) {
-      if (sourcetypes[i] == 0) { // Gaussian
-        float a = cos(thetas[i]) * cos(thetas[i]) / (2. * xsigmas[i] * xsigmas[i]) + sin(thetas[i]) * sin(thetas[i]) / (2. * ysigmas[i] * ysigmas[i]);
-        float b = -sin(2. * thetas[i]) / (4. * xsigmas[i] * xsigmas[i]) + sin(2. * thetas[i]) / (4. * ysigmas[i] * ysigmas[i]);
-        float c = sin(thetas[i]) * sin(thetas[i]) / (2. * xsigmas[i] * xsigmas[i]) + cos(thetas[i]) * cos(thetas[i]) / (2. * ysigmas[i] * ysigmas[i]);
-        float val = imagestrength * strengths[i] * exp(-(a * (rpp * scale * pos.x - xes[i])*(rpp * scale * pos.x - xes[i]) + 2. * b * (rpp * scale * pos.x - xes[i]) * (rpp * scale * pos.y - yes[i]) + c * (rpp * scale * pos.y - yes[i]) * (rpp * scale * pos.y - yes[i])));
-        col.x = col.x + val;
-        col.y = col.y + val;
-        col.z = col.z + val;
-      } else if (sourcetypes[i] == 1) { // Disk
-        float dist = sqrt((rpp * scale * pos.x - xes[i]) * (rpp * scale * pos.x - xes[i]) + (rpp * scale * pos.y - yes[i]) * (rpp * scale * pos.y - yes[i]));
-        float val = 0.;
-        if (dist < xsigmas[i]) val = imagestrength * strengths[i];
-        col.x = col.x + val;
-        col.y = col.y + val;
-        col.z = col.z + val;
-      }
-    }
-    if (col.x < 0.) 
-    {
-      col = vec4(1.,0.,0.,1.);
-    } else {
-      col = clamp(col, 0.0, 1.0);
-    }
-    fragColor = col;
-  } else {
-    // Fourier plane
-    float real = 0.;
-    float imag = 0.;
-    float phasenew = 0.;
-    float ampnew = 0.;
-    float red = 0.;
-    float green = 0.;
-    float blue = 0.;
-    for (int i = 0; i < 10; i++) {
-      if (sourcetypes[i] == 0) { // Gaussian
-        float sigma_x = PI * PI / (xsigmas[i] * lpp);
-        float sigma_y = PI * PI / (ysigmas[i] * lpp);
-        float a = cos(thetas[i]) * cos(thetas[i]) / (2. * sigma_x * sigma_x) + sin(thetas[i]) * sin(thetas[i]) / (2. * sigma_y * sigma_y);
-        float b = -sin(2. * thetas[i]) / (4. * sigma_x * sigma_x) + sin(2. * thetas[i]) / (4. * sigma_y * sigma_y);
-        float c = sin(thetas[i]) * sin(thetas[i]) / (2. * sigma_x * sigma_x) + cos(thetas[i]) * cos(thetas[i]) / (2. * sigma_y * sigma_y);
-        phasenew = -PI * ((gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) * lpp * (xes[i]) + 
-                          (gl_FragCoord.y - (resolution.y - 1.)/2.               ) * lpp * (yes[i]));
-        phasenew = mod(phasenew, 2. * PI);
-        //ampnew = fourierstrength * (PI / sqrt(xsigmas[i] * ysigmas[i]) * strengths[i] * exp(-(a * (gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y)*(gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) + 2. * b * (gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) * (gl_FragCoord.y - (resolution.y - 1.)/2.) + c * (gl_FragCoord.y - (resolution.y - 1.)/2.) * (gl_FragCoord.y - (resolution.y - 1.)/2.))));
-          // Gaussian source type
-          // Version where we invert the sigmax and sigmay for amplitude scaling:
-          ampnew = fourierstrength * (PI * (xsigmas[i] * ysigmas[i]) * strengths[i] * exp(-(a * (gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y)*(gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) + 2. * b * (gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) * (gl_FragCoord.y - (resolution.y - 1.)/2.) + c * (gl_FragCoord.y - (resolution.y - 1.)/2.) * (gl_FragCoord.y - (resolution.y - 1.)/2.))));
-      } else if (sourcetypes[i] == 1) { // Disk
-        phasenew = -PI * ((gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) * lpp * (xes[i]) + 
-                          (gl_FragCoord.y - (resolution.y - 1.)/2.               ) * lpp * (yes[i]));
-        phasenew = mod(phasenew, 2. * PI);
-        float radius = lpp * sqrt((gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) * (gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) + 
-                                  (gl_FragCoord.y - (resolution.y - 1.)/2.) * (gl_FragCoord.y - (resolution.y - 1.)/2.));
-	float br = bessel(xsigmas[i] * radius, 1) / (xsigmas[i] * radius);
-	if (radius < 1e-1) br = 0.5;
-        ampnew = strengths[i] * fourierstrength * 2. * PI * xsigmas[i] * xsigmas[i] * br;
-      }
-      real = real + cos(phasenew) * ampnew;
-      imag = imag + sin(phasenew) * ampnew;
-    }
-    float phase = atan(imag, real);
-    float amp = sqrt(real*real + imag*imag);
-    red   = (redBalance + (1. - redBalance) * cos(phase + PI)) * amp;
-    green = (greenBalance + (1. - greenBalance) * cos(phase + PI + 2./3. * PI)) * amp;
-    blue  = (blueBalance + (1. - blueBalance) * cos(phase + PI + 4./3. * PI)) * amp;
-    col = vec4(red, green, blue, 1.);
-    fragColor = col;
-    // Check our uv points to see which pixels we want to paint white in the Fourier plane
-    for (int i = 0; i < 10; i++) {
-      float u = (gl_FragCoord.x - (resolution.y - 1.)/2. - resolution.y) * lpp;
-      float v = (gl_FragCoord.y - (resolution.y - 1.)/2.               ) * lpp;
-      //if (((u-uvpoints[2*i])*(u-uvpoints[2*i]) + (v-uvpoints[2*i+1])*(v-uvpoints[2*i+1])) < 1e20) fragColor = vec4(1., 1., 1., 1.); // paint pixel white
-      if ((u-uvpoints[2*i])*(u-uvpoints[2*i]) + (v-uvpoints[2*i])*(v-uvpoints[2*i]) < 3. * lpp * lpp) fragColor = vec4(1., 1., 1., 1.); // paint pixel white
-    }
-  }
-  if (gl_FragCoord.y < 1. && gl_FragCoord.x < resolution.y/10. * float(sel+1) && gl_FragCoord.x > resolution.y/10. * float(sel)) {
-    fragColor = vec4(0.0, 1.0, 0.0, 1.0);
-  }
+  vec2 pos = gl_FragCoord.xy / resolution.xy;
+  fragColor = vec4(0.0, 1.0, 0.0, 1.0);
 }
 </script>
 
+<script src="math.min.js"></script>
 <script src="webgl.js"></script>
-<h2>Controls</h2>
-<h3>single-press actions</h3>
-<p>[ and ] keys: cycle through all 10 components to select the active source component (the selected component is indicated by a thin green bar at the very bottom of the sky image that jumps left or right when you switch selections  - look carefully). There are 10 source components in total that can all be modified.</p>
-<p>q key: switch the type of the current source component between 2D Gaussian and circular disk. For the disk, only sigma-x is used to determine its size.</p>
-<p>m key: center active component in middle of sky image.</p>
-<p>n key: normalize strength of active component to 1.</p>
-<p>b key: set sigma-x and sigma-y of active component to 50 pixels.</p>
-<p>0 key: set strength of active component to zero.</p>
-<p>u and i keys: change zoom level of sky image.</p>
-<p>o and p keys: change zoom level of visibility map.</p>
-<p>f,g,h keys: darken the r,g,b components of the visibility phase colour map.</p>
-<p>r,t,y keys: brighten the r,g,b components of the visibility phase colour map.</p>
-<p>k and l keys: change the size of the displayed window to make it fit your screen.</p>
-
-<h3>Press-and-hold actions</h3>
-<p>Cursor keys: move active component across sky image.</p>
-<p>w,a,s,d keys: change sigma-x (a and d) and sigma-y (s and w) of the current component.</p>
-<p>comma and period keys: rotate the active component on the sky, if it is a Gaussian.</p>
-<p>z and x keys: change strength of active component. Strength can be negative so that flux can be subtracted from other elements. When sky flux density becomes negative anywhere, this is indicated with a red colour.</p>
-<p>c and v keys: change brightness scale of sky image.</p>
-<p>minus and equals keys: change brightness scale of visibility map.</p>
 </body>
 </html>

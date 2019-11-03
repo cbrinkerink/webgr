@@ -3,7 +3,6 @@
 // Variable that holds the locations of variables in the shader for us
 var lc;
 
-var currentLoc = new Float32Array([20.,50.,90.,130.,170.,200.,220.,270.,290.,330.]);
 var gl;
 var program;
 var fps, fpsInterval, now, then;
@@ -12,169 +11,226 @@ var canvas;
 var width;
 var height;
 
-var lambdasPerPixel = 5e8;
-var radiansPerPixel = 1e-6 * 1./3600. * Math.PI/180.;
 var windowSize = 600;
 
-// We leave out left/right bracket, u&i, and o&p
-// as those should operate more in discrete steps for now.
 var up_pressed = false;
 var down_pressed = false;
 var left_pressed = false;
 var right_pressed = false;
-var w_pressed = false;
-var s_pressed = false;
-var a_pressed = false;
-var d_pressed = false;
-var z_pressed = false;
-var x_pressed = false;
-var c_pressed = false;
-var v_pressed = false;
-var comma_pressed = false;
-var period_pressed = false;
-var minus_pressed = false;
-var equals_pressed = false;
-var zero_pressed = false;
 
-var lambdasPerPixel = 5e8;
-var radiansPerPixel = 1e-6 * 1./3600. * Math.PI/180.;
+// Define observer variables:
+var X_u_obs = [0., 99., Math.PI/2., 0.];
+var U_u_obs = construct_U_vector(X_u_obs);
+var u_u_obs = [0., 0., 0.05, 0.];
+var k_u_obs = [0., -1., 0., 0.];
+k_u_obs = normalize_null(X_u_obs, k_u_obs);
 
-var sourcetypes = [
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0
+var levciv = make_levciv();
+
+// Set up data structure for tetrad-based camera look directions
+var camvecs;
+
+// Initialize metric to zeroes, we will fill it later
+var g_uu = [
+	    0., 0., 0., 0.,
+	    0., 0., 0., 0.,
+	    0., 0., 0., 0.,
+	    0., 0., 0., 0.
 ];
 
-var xes = [
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel
-  0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+var g_dd = [
+	    0., 0., 0., 0.,
+	    0., 0., 0., 0.,
+	    0., 0., 0., 0.,
+	    0., 0., 0., 0.
 ];
 
-var yes = [
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel, 
-//  (Math.random() * 40. - 20.) * radiansPerPixel
-  0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
-];
+// This function populates the camera vectors in the local tetrad frame.
+function makecamvecs(xpix, ypix, fovx, fovy) {
+  var cv = new Array(xpix);
+  for (var i = 0; i < xpix; i++) {
+    cv[i] = new Array(ypix);
+    for (var j = 0; j < ypix; j++) {
+      cv[i][j] = new Array(4);
+      var stepx = fovx / xpix;
+      var stepy = fovy / ypix;
+      var alpha = -fovx * 0.5 + (i + 0.5) * stepx;
+      var beta  = -fovy * 0.5 + (j + 0.5) * stepy;
+      var plane_dist = 30.;
+      var norm = Math.sqrt(alpha * alpha + beta * beta + plane_dist * plane_dist);
+      var ux = alpha / norm;
+      var uy = beta / norm;
+      var uz = plane_dist / norm;
+      cv[i][j][0] = 1.;
+      cv[i][j][1] = ux;
+      cv[i][j][2] = uy;
+      cv[i][j][3] = uz;
+    }
+  }
+  return cv;
+}
 
-var xsigmas = [
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel
-];
+function make_levciv() {
+  var levciv = new Array(4);
+  for (var i = 0; i < 4; i++) {
+    levciv[i] = new Array(4);
+    for (var j = 0; j < 4; j++) {
+      levciv[i][j] = new Array(4);
+      for (var k = 0; k < 4; k++) {
+        levciv[i][j][k] = new Array(4);
+	for (var l = 0; l < 4; l++) {
+	  if (i == j || i == k || i == l || j == k || j == l || k == l) levciv[i][j][k][l] = 0.;
+	  else levciv[i][j][k][l] = ((i-j) * (i-k) * (i-l) * (j-k) * (j-l) * (k-l)) / 12.;
+	}
+      }
+    }
+  }
+  return levciv;
+}
 
-var ysigmas = [
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel, 
-//  (Math.random() * 100. + 10.) * radiansPerPixel
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel,
-  50. * radiansPerPixel
-];
+function construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
+  var local_g_uu = metric_uu(X_u_obs);
+  var local_g_dd = metric_dd(X_u_obs);
+  var e_u = [
+	     [0., 0., 0., 0.],
+	     [0., 0., 0., 0.],
+	     [0., 0., 0., 0.],
+	     [0., 0., 0., 0.]
+             ];
+  e_u[0][0] = U_u_obs[0];
+  e_u[1][0] = U_u_obs[1];
+  e_u[2][0] = U_u_obs[2];
+  e_u[3][0] = U_u_obs[3];
+  var omega = -inner_product(X_u_obs, k_u_obs, U_u_obs);
+  e_u[0][3] = k_u_obs[0] / omega - U_u_obs[0];
+  e_u[1][3] = k_u_obs[1] / omega - U_u_obs[1];
+  e_u[2][3] = k_u_obs[2] / omega - U_u_obs[2];
+  e_u[3][3] = k_u_obs[3] / omega - U_u_obs[3];
+  var U_d = lower_index(X_u_obs, U_u_obs);
+  var k_d = lower_index(X_u_obs, k_u_obs);
+  var beta = inner_product(X_u_obs, U_u_obs, u_u_obs);
+  var Ccursive = inner_product(X_u_obs, k_u_obs, u_u_obs) / omega - beta;
+  var b2 = inner_product(X_u_obs, u_u_obs, u_u_obs);
+  var Ncursive = Math.sqrt(b2 + beta * beta - Ccursive * Ccursive);
+  e_u[0][1] = (u_u_obs[0] + beta * U_u_obs[0] - Ccursive * e_u[0][3]) / Ncursive;
+  e_u[1][1] = (u_u_obs[1] + beta * U_u_obs[1] - Ccursive * e_u[1][3]) / Ncursive;
+  e_u[2][1] = (u_u_obs[2] + beta * U_u_obs[2] - Ccursive * e_u[2][3]) / Ncursive;
+  e_u[3][1] = (u_u_obs[3] + beta * U_u_obs[3] - Ccursive * e_u[3][3]) / Ncursive;
+  var g = math.det(local_g_dd);
+  var u_d = lower_index(X_u_obs, u_u_obs);
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      for (var k = 0; k < 4; k++) {
+        for (var l = 0; l < 4; l++) {
+	  //console.log(i,j,k,l)
+	  e_u[i][2] = e_u[i][2] + (-1. / Math.sqrt(-g) * levciv[i][j][k][l] * U_d[j] * k_d[k] * u_d[l]) / (omega * Ncursive);
+	}
+      }
+    }
+  }
+  return e_u;
+}
 
-var thetas = [
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI, 
-//  Math.random() * Math.PI
-  0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
-];
+function construct_U_vector(X_u_obs) {
+  var local_g_uu = metric_uu(X_u_obs);
+  var local_U_d = [-Math.sqrt(-1. / local_g_uu[0][0]), 0., 0., 0.];
+  var local_U_u = raise_index(X_u_obs, local_U_d);
+  return local_U_u;
+}
 
-var strengths = [
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1, 
-//  Math.random() * 0.5 + 0.1
-  1.,0.,0.,0.,0.,0.,0.,0.,0.,0.
-];
+function normalize_null(X_u_obs, k_u_obs) {
+  var local_g_dd = metric_dd(X_u_obs);
+  k_u_obs[0] = Math.sqrt((local_g_dd[1][1] * k_u_obs[1] * k_u_obs[1] + 
+	                  local_g_dd[2][2] * k_u_obs[2] * k_u_obs[2] +
+	                  local_g_dd[3][3] * k_u_obs[3] * k_u_obs[3]) / -local_g_dd[0][0]);
+  return k_u_obs;
+}
 
-var uvs = [
-  1e7, 1e7,
-  5e7, 5e7,
-  1e8, 1e8,
-  5e8, 5e8,
-  1e9, 1e9,
-  5e9, 5e9,
-  1e10, 1e10,
-  5e10, 5e10,
-  1e11, 1e11,
-  5e11, 5e11
-];
+function inner_product(X_u_obs, A_u, B_u) {
+  var local_g_dd = metric_dd(X_u_obs);
+  return local_g_dd[0][0] * A_u[0] * B_u[0] +
+	 local_g_dd[1][1] * A_u[1] * B_u[1] +
+	 local_g_dd[2][2] * A_u[2] * B_u[2] +
+	 local_g_dd[3][3] * A_u[3] * B_u[3];
+}
 
-var scale;
-var fourierstrength = 6e18;
-var imagestrength = 1.;
-var sel = 0;
+function raise_index(X_u, V_d) {
+  var local_g_uu = metric_uu(X_u);
+  var V_u = [
+	     local_g_uu[0][0] * V_d[0],
+	     local_g_uu[1][1] * V_d[1],
+	     local_g_uu[2][2] * V_d[2],
+	     local_g_uu[3][3] * V_d[3]
+            ];
+  return V_u;
+}
 
-var redBalance = 0.6;
-var greenBalance = 0.6;
-var blueBalance = 0.6;
+function lower_index(X_u, V_u) {
+  var local_g_dd = metric_dd(X_u);
+  var V_d = [
+	     local_g_dd[0][0] * V_u[0],
+	     local_g_dd[1][1] * V_u[1],
+	     local_g_dd[2][2] * V_u[2],
+	     local_g_dd[3][3] * V_u[3]
+            ];
+  return V_d;
+}
+
+// Metric_uu function: takes 4-position, spits out contravariant metric.
+function metric_uu(X_u) {
+  var g_uu = [
+	      [0., 0., 0., 0.],
+	      [0., 0., 0., 0.],
+	      [0., 0., 0., 0.],
+	      [0., 0., 0., 0.]
+              ];
+
+  var r     = X_u[1];
+  var theta = X_u[2];
+  var sint  = Math.sin(theta);
+  var cost  = Math.cos(theta);
+  var sigma = r * r;
+  var delta = r * r - 2. * r;
+  var A_    = r * r * r * r;
+
+  g_uu[0][0] = -A_ / (sigma * delta);
+  g_uu[1][1] = delta / sigma;
+  g_uu[2][2] = 1. / sigma;
+  g_uu[3][3] = 1. / (sigma * sint * sint);
+
+  return g_uu;
+}
+
+// Metric_dd function: takes 4-position, spits out covariant metric.
+function metric_dd(X_u) {
+  var g_dd = [
+	      [0., 0., 0., 0.],
+	      [0., 0., 0., 0.],
+	      [0., 0., 0., 0.],
+	      [0., 0., 0., 0.]
+              ];
+
+  var r     = X_u[1];
+  var theta = X_u[2];
+  var sint  = Math.sin(theta);
+  var cost  = Math.cos(theta);
+  var sigma = r * r;
+  var delta = r * r - 2. * r;
+  var A_    = r * r * r * r;
+
+  g_dd[0][0] = -sigma * delta / A_;
+  g_dd[1][1] = sigma / delta;
+  g_dd[2][2] = sigma;
+  g_dd[3][3] = sigma * sint * sint;
+
+  return g_dd;
+}
+
+// This function orthogonalizes v2 to v1 (v1 is left unmodified).
+//function make_orthogonal(X_u_obs, v1_u, v2_u) {
+//  var local_g_dd = metric_dd(X_u_obs);
+//  var sub = inner_product(X_u_obs, v1_u, v2_u)
+//}
 
 function InitializeShader(gl, source_vs, source_frag)
 {
@@ -236,195 +292,6 @@ function keydown(e) {
   if (keyCode == 39) right_pressed = true;
   if (keyCode == 38) up_pressed    = true;
   if (keyCode == 40) down_pressed  = true;
-  if (e.key == 'w') w_pressed      = true;
-  if (e.key == 'a') a_pressed      = true;
-  if (e.key == 's') s_pressed      = true;
-  if (e.key == 'd') d_pressed      = true;
-  if (e.key == 'z') z_pressed      = true;
-  if (e.key == 'x') x_pressed      = true;
-  if (e.key == 'c') c_pressed      = true;
-  if (e.key == 'v') v_pressed      = true;
-  if (e.key == ',') comma_pressed  = true;
-  if (e.key == '.') period_pressed = true;
-  if (e.key == '-') minus_pressed  = true;
-  if (e.key == '=') equals_pressed = true;
-  if (e.key == 'q') {
-    sourcetypes[sel] = 1 - sourcetypes[sel];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "sourcetypes");
-    gl.uniform1iv(lc, sourcetypes);
-    requestAnimationFrame(render);
-  }
-  if (e.key == 'm') {
-    xes[sel] = 0.;
-    yes[sel] = 0.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "xes");
-    gl.uniform1fv(lc, xes);
-    lc = gl.getUniformLocation(program, "yes");
-    gl.uniform1fv(lc, yes);
-    requestAnimationFrame(render);
-  }
-  if (e.key == 'n') {
-    strengths[sel] = 1.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "strengths");
-    gl.uniform1fv(lc, strengths);
-    requestAnimationFrame(render);
-  }
-  if (e.key == 'b') {
-    xsigmas[sel] = 50. * radiansPerPixel;
-    ysigmas[sel] = 50. * radiansPerPixel;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "xsigmas");
-    gl.uniform1fv(lc, xsigmas);
-    lc = gl.getUniformLocation(program, "ysigmas");
-    gl.uniform1fv(lc, ysigmas);
-    requestAnimationFrame(render);
-  }
-  if (e.key == 'r') {
-    redBalance = redBalance + 0.1;
-    if (redBalance > 1.) redBalance = 1.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "redBalance");
-    gl.uniform1f(lc, redBalance);
-  }
-  if (e.key == 'f') {
-    redBalance = redBalance - 0.1;
-    if (redBalance < 0.5) redBalance = 0.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "redBalance");
-    gl.uniform1f(lc, redBalance);
-  }
-  if (e.key == 't') {
-    greenBalance = greenBalance + 0.1;
-    if (greenBalance > 1.) greenBalance = 1.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "greenBalance");
-    gl.uniform1f(lc, greenBalance);
-  }
-  if (e.key == 'g') {
-    greenBalance = greenBalance - 0.1;
-    if (greenBalance < 0.5) greenBalance = 0.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "greenBalance");
-    gl.uniform1f(lc, greenBalance);
-  }
-  if (e.key == 'y') {
-    blueBalance = blueBalance + 0.1;
-    if (blueBalance > 1.) blueBalance = 1.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "blueBalance");
-    gl.uniform1f(lc, blueBalance);
-  }
-  if (e.key == 'h') {
-    blueBalance = blueBalance - 0.1;
-    if (blueBalance < 0.5) blueBalance = 0.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "blueBalance");
-    gl.uniform1f(lc, blueBalance);
-  }
-  if (e.key == 'u') {
-    radiansPerPixel = radiansPerPixel/1.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "rpp");
-    gl.uniform1f(lc, radiansPerPixel);
-  }
-  if (e.key == 'i') {
-    radiansPerPixel = radiansPerPixel*1.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "rpp");
-    gl.uniform1f(lc, radiansPerPixel);
-  }
-  if (e.key == 'o') {
-    lambdasPerPixel = lambdasPerPixel/1.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "lpp");
-    gl.uniform1f(lc, lambdasPerPixel);
-  }
-  if (e.key == 'p') {
-    lambdasPerPixel = lambdasPerPixel*1.5;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "lpp");
-    gl.uniform1f(lc, lambdasPerPixel);
-  }
-  if (e.key == '0') {
-    strengths[sel] = 0.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "strengths");
-    gl.uniform1fv(lc, strengths);
-    requestAnimationFrame(render);
-  }
-  if (e.key == '[') {
-    sel = sel - 1;
-    if (sel < 0) sel = 9;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "sel");
-    gl.uniform1i(lc, sel);
-    requestAnimationFrame(render);
-  }
-  if (e.key == ']') {
-    sel = sel + 1;
-    if (sel > 9) sel = 0;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "sel");
-    gl.uniform1i(lc, sel);
-    requestAnimationFrame(render);
-  }
-  if (e.key == 'k') {
-    // Resize the canvas element
-    width = document.getElementById("canvas").width;
-    height = document.getElementById("canvas").height;
-    if (width > 100) {
-      document.getElementById("canvas").width = width - 100;
-      document.getElementById("canvas").height = height - 50;
-      gl.viewport(0, 0, width-100, height-50);
-      gl.useProgram(program);
-      lc = gl.getUniformLocation(program, "resolution");
-      gl.uniform2f(lc, width-100, height-50);
-      scale = width/2.;
-      lc = gl.getUniformLocation(program, "scale");
-      gl.uniform1f(lc, scale);
-      radiansPerPixel = radiansPerPixel * width/(width-100);
-      lambdasPerPixel = lambdasPerPixel * width/(width-100);
-      lc = gl.getUniformLocation(program, "rpp");
-      gl.uniform1f(lc, radiansPerPixel);
-      lc = gl.getUniformLocation(program, "lpp");
-      gl.uniform1f(lc, lambdasPerPixel);
-      requestAnimationFrame(render);
-    }
-    console.log("Actual canvas width = ", document.getElementById("canvas").width);
-    console.log("drawingBufferWidth = ", gl.drawingBufferWidth);
-    console.log("window.innerWidth = ", window.innerWidth);
-    console.log("gl.canvas.clientWidth = ", gl.canvas.clientWidth);
-    console.log("gl.canvas.width = ", gl.canvas.width);
-  }
-  if (e.key == 'l') {
-    // Resize the canvas element
-    width = document.getElementById("canvas").width;
-    height = document.getElementById("canvas").height;
-    document.getElementById("canvas").width = width + 100;
-    document.getElementById("canvas").height = height + 50;
-      gl.viewport(0, 0, width+100, height+50);
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "resolution");
-    gl.uniform2f(lc, width+100, height+50);
-    scale = width/2.;
-    lc = gl.getUniformLocation(program, "scale");
-    gl.uniform1f(lc, scale);
-    radiansPerPixel = radiansPerPixel * width/(width+100);
-    lambdasPerPixel = lambdasPerPixel * width/(width+100);
-    lc = gl.getUniformLocation(program, "rpp");
-    gl.uniform1f(lc, radiansPerPixel);
-    lc = gl.getUniformLocation(program, "lpp");
-    gl.uniform1f(lc, lambdasPerPixel);
-    requestAnimationFrame(render);
-    console.log("Actual canvas width = ", document.getElementById("canvas").width);
-    console.log("drawingBufferWidth = ", gl.drawingBufferWidth);
-    console.log("window.innerWidth = ", window.innerWidth);
-    console.log("gl.canvas.clientWidth = ", gl.canvas.clientWidth);
-    console.log("gl.canvas.width = ", gl.canvas.width);
-  }
 }
 
 function checkInput() {
@@ -457,98 +324,6 @@ function checkInput() {
     gl.uniform1fv(lc, yes);
     requestAnimationFrame(render);
   }
-  if (w_pressed) {
-    ysigmas[sel] = ysigmas[sel] + 1. * radiansPerPixel;
-    if (ysigmas[sel] > windowSize * radiansPerPixel) ysigmas[sel] = windowSize * radiansPerPixel;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "ysigmas");
-    gl.uniform1fv(lc, ysigmas);
-    requestAnimationFrame(render);    
-  }
-  if (s_pressed) {
-    ysigmas[sel] = ysigmas[sel] - 1. * radiansPerPixel;
-    if (ysigmas[sel] < 1. * radiansPerPixel) ysigmas[sel] = 1. * radiansPerPixel;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "ysigmas");
-    gl.uniform1fv(lc, ysigmas);
-    requestAnimationFrame(render);    
-  }
-  if (d_pressed) {
-    xsigmas[sel] = xsigmas[sel] + 1. * radiansPerPixel;
-    if (xsigmas[sel] > windowSize * radiansPerPixel) xsigmas[sel] = windowSize * radiansPerPixel;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "xsigmas");
-    gl.uniform1fv(lc, xsigmas);
-    requestAnimationFrame(render);    
-  }
-  if (a_pressed) {
-    xsigmas[sel] = xsigmas[sel] - 1. * radiansPerPixel;
-    if (xsigmas[sel] < 1. * radiansPerPixel) xsigmas[sel] = 1. * radiansPerPixel;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "xsigmas");
-    gl.uniform1fv(lc, xsigmas);
-    requestAnimationFrame(render);    
-  }
-  if (comma_pressed) {
-    thetas[sel] = thetas[sel] - 0.01 * Math.PI;
-    if (thetas[sel] < 0.) thetas[sel] = thetas[sel] + Math.PI;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "thetas");
-    gl.uniform1fv(lc, thetas);
-    requestAnimationFrame(render); 
-  }
-  if (period_pressed) {
-    thetas[sel] = thetas[sel] + 0.01 * Math.PI;
-    if (thetas[sel] > Math.PI) thetas[sel] = thetas[sel] - Math.PI;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "thetas");
-    gl.uniform1fv(lc, thetas);
-    requestAnimationFrame(render); 
-  }
-  if (z_pressed) {
-    strengths[sel] = strengths[sel] - 0.01;
-    if (strengths[sel] < -5.) strengths[sel] = -5.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "strengths");
-    gl.uniform1fv(lc, strengths);
-    requestAnimationFrame(render);
-  }
-  if (x_pressed) {
-    strengths[sel] = strengths[sel] + 0.01;
-    if (strengths[sel] > 5.) strengths[sel] = 5.;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "strengths");
-    gl.uniform1fv(lc, strengths);
-    requestAnimationFrame(render);
-  }
-  if (c_pressed) {
-    imagestrength = imagestrength/1.1;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "imagestrength");
-    gl.uniform1f(lc, imagestrength);
-    requestAnimationFrame(render);
-  }
-  if (v_pressed) {
-    imagestrength = imagestrength*1.1;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "imagestrength");
-    gl.uniform1f(lc, imagestrength);
-    requestAnimationFrame(render);
-  }
-  if (minus_pressed) {
-    fourierstrength = fourierstrength/1.1;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "fourierstrength");
-    gl.uniform1f(lc, fourierstrength);
-    requestAnimationFrame(render);
-  }
-  if (equals_pressed) {
-    fourierstrength = fourierstrength*1.1;
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "fourierstrength");
-    gl.uniform1f(lc, fourierstrength);
-    requestAnimationFrame(render);
-  }
 }
 
 function keyup(e) {
@@ -557,18 +332,6 @@ function keyup(e) {
   if (keyCode == 39) right_pressed = false;
   if (keyCode == 38) up_pressed    = false;
   if (keyCode == 40) down_pressed  = false;
-  if (e.key == 'w') w_pressed      = false;
-  if (e.key == 'a') a_pressed      = false;
-  if (e.key == 's') s_pressed      = false;
-  if (e.key == 'd') d_pressed      = false;
-  if (e.key == 'z') z_pressed      = false;
-  if (e.key == 'x') x_pressed      = false;
-  if (e.key == 'c') c_pressed      = false;
-  if (e.key == 'v') v_pressed      = false;
-  if (e.key == ',') comma_pressed  = false;
-  if (e.key == '.') period_pressed = false;
-  if (e.key == '-') minus_pressed  = false;
-  if (e.key == '=') equals_pressed = false;
 }
 
 function render() {
@@ -583,11 +346,33 @@ function render() {
 
 function main() {
   console.log("Starting!");
+
+  // Test area for GR functions.
+  console.log("X_u_obs = ", X_u_obs);
+  console.log("U_u_obs = ", U_u_obs);
+  var inp = inner_product(X_u_obs, U_u_obs, U_u_obs);
+  console.log("inner prod X and U is: ", inp);
+
+  var k_u_obs = [0., -1., 0., 0.];
+  console.log("initial k_u_obs = ", k_u_obs);
+  k_u_obs = normalize_null(X_u_obs, k_u_obs);
+  console.log("normalized k_u_obs = ", k_u_obs);
+
+  console.log("k_u_obs inner product is: ", inner_product(X_u_obs, k_u_obs, k_u_obs));
+
+  console.log("levciv is ", levciv);
+
+  console.log("Constructing tetrad...");
+  var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
+  console.log("tetrad is ", tet);
+
   canvas = document.getElementById('canvas');
   width = canvas.width;
   height = canvas.height;
 
-  scale = width / 2.;
+  console.log("Making camera vectors...");
+  camvecs = makecamvecs(width, height, 30., 30.);
+  console.log("Camvec 600 300 is: ", camvecs[600][300]);
 
   fps = 90.;
   fpsInterval = 1000 / fps;
@@ -617,59 +402,11 @@ function main() {
   // Make sure that we are using the right program first.
   gl.useProgram(program);
 
+  // The line below is how we ask the shader to give us the location in memory where a
+  // 'uniform' type variable is stored in the shader code. Once we have this location,
+  // we can write data into it.
   lc = gl.getUniformLocation(program, "resolution");
   gl.uniform2f(lc, width, height);
-
-  lc = gl.getUniformLocation(program, "sourcetypes");
-  gl.uniform1iv(lc, sourcetypes);
-
-  lc = gl.getUniformLocation(program, "xes");
-  gl.uniform1fv(lc, xes);
-
-  lc = gl.getUniformLocation(program, "yes");
-  gl.uniform1fv(lc, yes);
-
-  lc = gl.getUniformLocation(program, "xsigmas");
-  gl.uniform1fv(lc, xsigmas);
-
-  lc = gl.getUniformLocation(program, "ysigmas");
-  gl.uniform1fv(lc, ysigmas);
-
-  lc = gl.getUniformLocation(program, "thetas");
-  gl.uniform1fv(lc, thetas);
-
-  lc = gl.getUniformLocation(program, "strengths");
-  gl.uniform1fv(lc, strengths);
-
-  lc = gl.getUniformLocation(program, "scale");
-  gl.uniform1f(lc, scale);
-
-  lc = gl.getUniformLocation(program, "fourierstrength");
-  gl.uniform1f(lc, fourierstrength);
-
-  lc = gl.getUniformLocation(program, "imagestrength");
-  gl.uniform1f(lc, imagestrength);
-
-  lc = gl.getUniformLocation(program, "rpp");
-  gl.uniform1f(lc, radiansPerPixel);
-
-  lc = gl.getUniformLocation(program, "lpp");
-  gl.uniform1f(lc, lambdasPerPixel);
-
-  lc = gl.getUniformLocation(program, "sel");
-  gl.uniform1i(lc, sel);
-
-  lc = gl.getUniformLocation(program, "redBalance");
-  gl.uniform1f(lc, redBalance);
-
-  lc = gl.getUniformLocation(program, "greenBalance");
-  gl.uniform1f(lc, greenBalance);
-
-  lc = gl.getUniformLocation(program, "blueBalance");
-  gl.uniform1f(lc, blueBalance);
-
-  lc = gl.getUniformLocation(program, "uvpoints");
-  gl.uniform1fv(lc, uvs);
 
   // lookup uniforms
   var matrixLocation = gl.getUniformLocation(program, "u_matrix");
@@ -677,13 +414,16 @@ function main() {
   // Create a buffer for the positions.
   var positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  // Set Geometry.
+  // Set Geometry: we define a 'quad' (two triangles) to draw to the canvas.
+  // The actual colours of these triangles will not be displayed, because our
+  // fragment shader will overwrite all of it. But the geometry needs to be there,
+  // otherwise we will end up seeing nothing.
   setGeometry(gl);
 
   // Create a buffer for the colors.
   var colorBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  // Set the colors.
+  // Set the colors. This does not really matter, but we leave it in for completeness' sake.
   setColors(gl);
 
   var translation = [0, 0];
@@ -695,7 +435,8 @@ function main() {
   then = Date.now();
   requestAnimationFrame(render);
 
-  // Draw the scene.
+  // Draw the scene. This function only gets called once: to put the triangles on the canvas. All updates after this
+  // will only update the colours of the pixels. The same two triangles simply stay on the canvas.
   function drawScene() {
 
     // Tell WebGL how to convert from clip space to pixels
