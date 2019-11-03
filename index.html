@@ -10,10 +10,12 @@
 
 in vec2 a_position;
 in vec4 a_color;
+in vec2 a_texcoord;
 
 uniform mat3 u_matrix;
 
 out vec4 v_color;
+out vec2 v_texcoord;
 
 void main() {
   // Multiply the position by the matrix.
@@ -21,6 +23,7 @@ void main() {
 
   // Copy the color from the attribute to the varying.
   v_color = a_color;
+  v_texcoord = a_texcoord;
 }
 </script>
 
@@ -47,34 +50,16 @@ precision mediump int;
 
 uniform vec2 resolution; // This variable stores our canvas dimensions, which is important for defining a relative coordinate for the pixel within the canvas.
 
-uniform mat4 g_uu;
-uniform mat4 g_dd;
+in vec2 v_texcoord;
 
-uniform int sourcetypes[10];
-uniform float xes[10];
-uniform float yes[10];
-uniform float xsigmas[10];
-uniform float ysigmas[10];
-uniform float thetas[10];
-uniform float strengths[10];
-uniform float scale;
-uniform float fourierstrength;
-uniform float imagestrength;
-uniform float lpp;
-uniform float rpp;
-uniform int sel;
-
-uniform float redBalance;
-uniform float greenBalance;
-uniform float blueBalance;
-
-uniform float uvpoints[20];
+uniform sampler2D u_texture;
 
 out vec4 fragColor;
 
 void main() {
   vec2 pos = gl_FragCoord.xy / resolution.xy;
-  fragColor = vec4(0.0, 1.0, 0.0, 1.0);
+  //fragColor = vec4(pos.x, pos.y, 0.0, 1.0);
+  fragColor = texture(u_texture, v_texcoord);
 }
 </script>
 

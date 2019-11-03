@@ -47,11 +47,12 @@ var g_dd = [
 
 // This function populates the camera vectors in the local tetrad frame.
 function makecamvecs(xpix, ypix, fovx, fovy) {
-  var cv = new Array(xpix);
+  var cv = new Array(xpix * ypix * 4);
+  //var cv = new Array(xpix);
   for (var i = 0; i < xpix; i++) {
-    cv[i] = new Array(ypix);
+    //cv[i] = new Array(ypix);
     for (var j = 0; j < ypix; j++) {
-      cv[i][j] = new Array(4);
+      //cv[i][j] = new Array(4);
       var stepx = fovx / xpix;
       var stepy = fovy / ypix;
       var alpha = -fovx * 0.5 + (i + 0.5) * stepx;
@@ -61,10 +62,14 @@ function makecamvecs(xpix, ypix, fovx, fovy) {
       var ux = alpha / norm;
       var uy = beta / norm;
       var uz = plane_dist / norm;
-      cv[i][j][0] = 1.;
-      cv[i][j][1] = ux;
-      cv[i][j][2] = uy;
-      cv[i][j][3] = uz;
+      //cv[i][j][0] = 1.;
+      //cv[i][j][1] = ux;
+      //cv[i][j][2] = uy;
+      //cv[i][j][3] = uz;
+      cv[(i + j * xpix) * 4 + 0] = 1.;
+      cv[(i + j * xpix) * 4 + 1] = ux;
+      cv[(i + j * xpix) * 4 + 2] = uy;
+      cv[(i + j * xpix) * 4 + 3] = uz;
     }
   }
   return cv;
@@ -116,13 +121,13 @@ function construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
   e_u[1][1] = (u_u_obs[1] + beta * U_u_obs[1] - Ccursive * e_u[1][3]) / Ncursive;
   e_u[2][1] = (u_u_obs[2] + beta * U_u_obs[2] - Ccursive * e_u[2][3]) / Ncursive;
   e_u[3][1] = (u_u_obs[3] + beta * U_u_obs[3] - Ccursive * e_u[3][3]) / Ncursive;
-  var g = math.det(local_g_dd);
+  //var g = math.det(local_g_dd);
+  var g = local_g_dd[0][0] * local_g_dd[1][1] * local_g_dd[2][2] * local_g_dd[3][3]; // because diagonal matrix :p
   var u_d = lower_index(X_u_obs, u_u_obs);
   for (var i = 0; i < 4; i++) {
     for (var j = 0; j < 4; j++) {
       for (var k = 0; k < 4; k++) {
         for (var l = 0; l < 4; l++) {
-	  //console.log(i,j,k,l)
 	  e_u[i][2] = e_u[i][2] + (-1. / Math.sqrt(-g) * levciv[i][j][k][l] * U_d[j] * k_d[k] * u_d[l]) / (omega * Ncursive);
 	}
       }
@@ -370,10 +375,6 @@ function main() {
   width = canvas.width;
   height = canvas.height;
 
-  console.log("Making camera vectors...");
-  camvecs = makecamvecs(width, height, 30., 30.);
-  console.log("Camvec 600 300 is: ", camvecs[600][300]);
-
   fps = 90.;
   fpsInterval = 1000 / fps;
 
@@ -397,6 +398,43 @@ function main() {
   // look up where the vertex data needs to go.
   var positionLocation = gl.getAttribLocation(program, "a_position");
   var colorLocation = gl.getAttribLocation(program, "a_color");
+  var texcoordAttributeLocation = gl.getAttribLocation(program, "a_texcoord");
+
+  // Upload texture coordinates to shader
+  // create the texcoord buffer, make it the current ARRAY_BUFFER
+  // and copy in the texcoord values
+  var texcoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+  setTexcoords(gl);
+   
+  // Turn on the attribute
+  gl.enableVertexAttribArray(texcoordAttributeLocation);
+   
+  // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
+  var size = 2;          // 2 components per iteration
+  var type = gl.FLOAT;   // the data is 32bit floating point values
+  var normalize = true;  // convert from 0-255 to 0.0-1.0
+  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next color
+  var offset = 0;        // start at the beginning of the buffer
+  gl.vertexAttribPointer(texcoordAttributeLocation, size, type, normalize, stride, offset);
+
+  // Create a texture.
+  var texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+   
+  // Fill the texture with a 1x1 blue pixel.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array([0, 0, 255, 255]));
+   
+  // Asynchronously load an image
+  var image = new Image();
+  image.src = "resources/f-texture.png";
+  image.addEventListener('load', function() {
+    // Now that the image has loaded make copy it to the texture.
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+  });
 
   // Look up locations of other variables
   // Make sure that we are using the right program first.
@@ -407,6 +445,9 @@ function main() {
   // we can write data into it.
   lc = gl.getUniformLocation(program, "resolution");
   gl.uniform2f(lc, width, height);
+
+  //lc = gl.getUniformLocation(program, "camvecs");
+  //gl.uniform1fv(lc, camvecs);
 
   // lookup uniforms
   var matrixLocation = gl.getUniformLocation(program, "u_matrix");
@@ -544,6 +585,22 @@ function setColors(gl) {
           r2, b2, g2, 1,
           r2, b2, g2, 1]),
       gl.STATIC_DRAW);
+}
+
+// Fill the buffer with texture coordinates for the F.
+function setTexcoords(gl) {
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        // left column front
+        0, 0,
+        0, 1,
+        1, 0,
+        0, 1,
+        1, 0,
+        1, 1,
+       ]),
+       gl.STATIC_DRAW);
 }
 
 main();
