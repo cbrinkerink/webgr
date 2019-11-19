@@ -3,7 +3,7 @@
 <body>
 <h1>Flying around a Schwarzschild black hole</h1>
 <p>Use the canvas below to fly around a Schwarzschild black hole in real time!</p>
-<canvas id="canvas" width="1200" height="600"></canvas>
+<canvas id="canvas" width="1200" height="600" style="background: black;"></canvas>
 
 <!-- vertex shader -->
 <script id="2d-vertex-shader" type="x-shader/x-vertex">#version 300 es
@@ -33,33 +33,119 @@ precision mediump int;
 
 #define PI 3.1415926536
 
-// This shader will need to do the following:
+// In javascript, we need to perform these steps:
 
 // - Keep track of observer variables: position (schw), 4-velocity (schw), look direction (schw), up direction (schw).
 // - Update observer state and compute observer tetrad using the above variables.
-// - Transform local look vector (defined in local tetrad components) to global schwarzschild/BL coordinates.
+// - Copy tetrad to shader.
+
+// This shader will need to do the following:
+
+// - Per pixel, generate look vector in terms of local tetrad components (follows from pixel coordinates). Simple operation.
+// - Transform local look vector (defined in local tetrad components) to global schwarzschild/BL coordinates using tetrad that was made available as a uniform.
 // - Calculate angle alpha between look vector and radial vector. Together with the radial position of the observer,
 //   this angle will determine where in the deflection map we have to look up our deflection angle.
+//   This angle calculation can be done under the assumption that we are working with 'regular' spherical coordinates (because the deflection map was generated using the same assumption).
+//   Convert both vectors to 'cartesian' and perform dot product.
 // - Look up deflection from deflection angle texture using observer radial position and alpha.
-// - Calculate 'final', deflected look direction.
-// - Look up the colour corresponding to the final look direction from the sky map or from a checkerboard pattern.
+// - Calculate 'final', deflected look direction using Rodrigues rotation formula. This gives an 'absolute' sky direction.
+// - Look up the colour corresponding to the final look direction from the sky map or from a checkerboard pattern. Simple texture lookup.
 
-// USEFUL FUNCTIONS:
-
-// - Metric function: takes 4 spacetime components, spits out 4x4 matrix with numerical metric components. Need two versions: contravariant and covariant!
+uniform mat4 tetrad_u; // four 4-vectors describing the local observer tetrad.
+uniform vec4 obs_pos; // 4-position of observer
+uniform vec4 obs_vel; // 4-velocity of observer (not yet used)
 
 uniform vec2 resolution; // This variable stores our canvas dimensions, which is important for defining a relative coordinate for the pixel within the canvas.
 
 in vec2 v_texcoord;
 
-uniform sampler2D u_texture;
+uniform sampler2D u_texture_background;
+uniform sampler2D u_texture_deflection;
 
 out vec4 fragColor;
 
+const float x = 1.0/255.0;
+const float y = 1.0/65025.0;
+const float z = 1.0/16581375.0;
+
+vec4 normt(vec4 invec) {
+  invec.x = sqrt(invec.y * invec.y + invec.z * invec.z + invec.w * invec.w);
+  return invec;
+}
+
+vec3 convert_lookdir_to_cartesian(vec4 l, vec4 p) {
+  vec3 cl = normalize(vec3(l.y * sin(p.z) * cos(p.w) + l.z * p.y * cos(p.z) * cos(p.w) + l.w * -p.y * sin(p.z) * sin(p.w),
+                           l.y * sin(p.z) * sin(p.w) + l.z * p.y * cos(p.z) * sin(p.w) + l.w *  p.y * sin(p.z) * cos(p.w),
+                           l.y * cos(p.z)            - l.z * p.y * sin(p.z)            + 0.));
+  return cl;
+}
+
+vec3 convert_position_to_cartesian(vec4 p) {
+  vec3 cp = normalize(vec3(sin(p.z) * cos(p.w), sin(p.z) * sin(p.w), cos(p.z)));
+  return cp;
+}
+
+vec3 inprod(vec4 l, vec4 p, out float mag) {
+  // Only use spatial components of the 4-vectors for now.
+  // x = t, y = r, z = theta, w = phi.
+  //Make cartesian versions of both vectors, pretending we are in flat space.
+  vec3 cl = normalize(vec3(l.y * sin(p.z) * cos(p.w) + l.z * p.y * cos(p.z) * cos(p.w) + l.w * -p.y * sin(p.z) * sin(p.w),
+                           l.y * sin(p.z) * sin(p.w) + l.z * p.y * cos(p.z) * sin(p.w) + l.w *  p.y * sin(p.z) * cos(p.w),
+                           l.y * cos(p.z)            - l.z * p.y * sin(p.z)            + 0.));
+  vec3 cp = normalize(vec3(sin(p.z) * cos(p.w), sin(p.z) * sin(p.w), cos(p.z)));
+  mag = (cl.x * cp.x + cl.y * cp.y + cl.z * cp.z);
+  return cross(cp, cl);
+}
+
+vec4 EncodeFloatRGBA( float v ) {
+  vec4 enc = vec4(1.0, 255.0, 65025.0, 16581375.0) * v;
+  enc = fract(enc);
+  enc -= enc.yzww * vec4(x,x,x,0.0);
+  return enc;
+}
+float DecodeFloatRGBA( vec4 rgba ) {
+  return dot( rgba, vec4(1.0, x, y, z) );
+}
+
+// For the deflection table: rmin = 2.0000001, rmax = 100.
+// Alpha goes from away from the BH to straight towards the BH.
+// Min deflection angle is -1. (BH), max is 6.26672883. All in radians.
+float datamin = -1.;
+float datamax = 6.26672883;
+float rmin = 2.0000001;
+float rmax = 100.;
+float alphamin = 0.;
+float alphamax = PI;
+
 void main() {
-  vec2 pos = gl_FragCoord.xy / resolution.xy;
-  //fragColor = vec4(pos.x, pos.y, 0.0, 1.0);
-  fragColor = texture(u_texture, v_texcoord);
+  vec2 pos = vec2(1., resolution.y/resolution.x) * 2. * (gl_FragCoord.xy / resolution.xy - 0.5); // goes from -1 to 1 in X, and proportionally in Y according to viewport geometry.
+  vec4 camvec = vec4(0., pos.y, -pos.x, 1.); // Set up the look direction for this pixel, in camera/tetrad space
+  camvec = normalize(camvec);
+  camvec.x = 1.; // set time component of look direction to 1 for future-proofing
+  camvec = tetrad_u * camvec; // Convert look direction to world spherical coordinates using our tetrad
+  vec3 camvec_cartesian = convert_lookdir_to_cartesian(camvec, obs_pos);
+  vec3 obspos_cartesian = convert_position_to_cartesian(obs_pos);
+  float alpha = acos(dot(camvec_cartesian, obspos_cartesian)); // Calculate look angle w.r.t. center of BH
+  vec3 ip = normalize(cross(camvec_cartesian, obspos_cartesian)); // Calculate cartesian vector around which to rotate our view vector
+  float r = obs_pos.y; // get the radial coordinate of the observer
+
+  float rfrac = (r - rmin)/(rmax-rmin); // calculate fractional r-value for deflection angle texture lookup
+  float alphafrac = (alpha -alphamin)/(alphamax - alphamin); // calculate fractional alpha value for deflection angle texture lookup
+  vec4 tc = texture(u_texture_deflection, vec2(rfrac, alphafrac)); // Get RGBA from deflection angle texture map
+  //vec4 tc = texture(u_texture_background, vec2(xtex, ytex));
+  float deflectionangle = datamin + tc.x * (datamax - datamin) + tc.y * (datamax - datamin)/255. + tc.z * (datamax - datamin)/(255.*255.) + tc.w * (datamax - datamin)/(255.*255.*255.); // Convert the RGBA components into a float value using our mapping rule defined earlier
+
+  // Now we have the deflection angle and the vector to rotate our camvec around.
+  vec3 camvec_cartesian_rotated = camvec_cartesian * cos(-deflectionangle) + cross(ip,camvec_cartesian) * sin(-deflectionangle) + ip * dot(ip, camvec_cartesian) * (1. - cos(-deflectionangle));
+
+  float xtex = (atan(camvec_cartesian_rotated.y, camvec_cartesian_rotated.x) + PI) / (2. * PI); // so that it runs from 0 to 1
+  float ytex = acos(camvec_cartesian_rotated.z)/PI;
+
+  vec4 col = texture(u_texture_background, vec2(xtex, ytex)); // Get RGBA from deflection angle texture map
+  //fragColor = vec4(tst/10., tst/10., tst/10., 1.0); // Set pixel colour to deflection angle, for testing
+  if (deflectionangle < 0.) fragColor = vec4(0., 0., 0., 1.);
+  else fragColor = col;
+  //fragColor = vec4((ip.x + 1.) * 0.5, (ip.y + 1.) * 0.5, (ip.z + 1.) * 0.5, 1.0);
 }
 </script>
 

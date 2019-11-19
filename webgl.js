@@ -19,10 +19,12 @@ var left_pressed = false;
 var right_pressed = false;
 
 // Define observer variables:
-var X_u_obs = [0., 99., Math.PI/2., 0.];
+var X_u_obs = [0., 99., Math.PI/2., Math.PI/2.];
 var U_u_obs = construct_U_vector(X_u_obs);
-var u_u_obs = [0., 0., 0.05, 0.];
-var k_u_obs = [0., -1., 0., 0.];
+//var u_u_obs = [0., 0., 0.01, 0.];
+var u_u_obs = [0., 0., -0.01, 0.]; // up direction
+//var k_u_obs = [0., -1., 0., 0.];
+var k_u_obs = [0., -1., 0., 0.]; // look direction
 k_u_obs = normalize_null(X_u_obs, k_u_obs);
 
 var levciv = make_levciv();
@@ -44,6 +46,10 @@ var g_dd = [
 	    0., 0., 0., 0.,
 	    0., 0., 0., 0.
 ];
+
+var deflectionmap = new Float32Array(256 * 256);
+
+parseFloat()
 
 // This function populates the camera vectors in the local tetrad frame.
 function makecamvecs(xpix, ypix, fovx, fovy) {
@@ -96,16 +102,19 @@ function make_levciv() {
 function construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
   var local_g_uu = metric_uu(X_u_obs);
   var local_g_dd = metric_dd(X_u_obs);
+  // Initialize the tetrad to all zeroes
   var e_u = [
 	     [0., 0., 0., 0.],
 	     [0., 0., 0., 0.],
 	     [0., 0., 0., 0.],
 	     [0., 0., 0., 0.]
              ];
+  // Use the 4-velocity of the observer for the time component
   e_u[0][0] = U_u_obs[0];
   e_u[1][0] = U_u_obs[1];
   e_u[2][0] = U_u_obs[2];
   e_u[3][0] = U_u_obs[3];
+  // Make the look direction perpendicular to the time component
   var omega = -inner_product(X_u_obs, k_u_obs, U_u_obs);
   e_u[0][3] = k_u_obs[0] / omega - U_u_obs[0];
   e_u[1][3] = k_u_obs[1] / omega - U_u_obs[1];
@@ -117,6 +126,7 @@ function construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
   var Ccursive = inner_product(X_u_obs, k_u_obs, u_u_obs) / omega - beta;
   var b2 = inner_product(X_u_obs, u_u_obs, u_u_obs);
   var Ncursive = Math.sqrt(b2 + beta * beta - Ccursive * Ccursive);
+  // Use u_u_obs to generate a component perpendicular to the look direction (right-pointing).
   e_u[0][1] = (u_u_obs[0] + beta * U_u_obs[0] - Ccursive * e_u[0][3]) / Ncursive;
   e_u[1][1] = (u_u_obs[1] + beta * U_u_obs[1] - Ccursive * e_u[1][3]) / Ncursive;
   e_u[2][1] = (u_u_obs[2] + beta * U_u_obs[2] - Ccursive * e_u[2][3]) / Ncursive;
@@ -124,6 +134,7 @@ function construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
   //var g = math.det(local_g_dd);
   var g = local_g_dd[0][0] * local_g_dd[1][1] * local_g_dd[2][2] * local_g_dd[3][3]; // because diagonal matrix :p
   var u_d = lower_index(X_u_obs, u_u_obs);
+  // Construct the last perpendicular component (should be the up direction).
   for (var i = 0; i < 4; i++) {
     for (var j = 0; j < 4; j++) {
       for (var k = 0; k < 4; k++) {
@@ -302,31 +313,31 @@ function keydown(e) {
 function checkInput() {
   //console.log("Checking input state!");
   if (left_pressed) {
-    xes[sel] = xes[sel] - 1. * radiansPerPixel;
+    X_u_obs[3] = X_u_obs[3] - 0.01;
     gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "xes");
-    gl.uniform1fv(lc, xes);
+    lc = gl.getUniformLocation(program, "obs_pos");
+    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
     requestAnimationFrame(render);
   }
   if (right_pressed) {
-    xes[sel] = xes[sel] + 1. * radiansPerPixel;
+    X_u_obs[3] = X_u_obs[3] + 0.01;
     gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "xes");
-    gl.uniform1fv(lc, xes);
+    lc = gl.getUniformLocation(program, "obs_pos");
+    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
     requestAnimationFrame(render);
   }
   if (up_pressed) {
-    yes[sel] = yes[sel] + 1. * radiansPerPixel;
+    X_u_obs[1] = X_u_obs[1] - 0.1;
     gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "yes");
-    gl.uniform1fv(lc, yes);
+    lc = gl.getUniformLocation(program, "obs_pos");
+    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
     requestAnimationFrame(render);
   }
   if (down_pressed) {
-    yes[sel] = yes[sel] - 1. * radiansPerPixel;
+    X_u_obs[1] = X_u_obs[1] + 0.1;
     gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "yes");
-    gl.uniform1fv(lc, yes);
+    lc = gl.getUniformLocation(program, "obs_pos");
+    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
     requestAnimationFrame(render);
   }
 }
@@ -344,6 +355,8 @@ function render() {
   if (now - then > fpsInterval) {
     then = now;
     checkInput();
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
   requestAnimationFrame(render);
@@ -358,7 +371,7 @@ function main() {
   var inp = inner_product(X_u_obs, U_u_obs, U_u_obs);
   console.log("inner prod X and U is: ", inp);
 
-  var k_u_obs = [0., -1., 0., 0.];
+  //var k_u_obs = [0., -1., 0., 0.];
   console.log("initial k_u_obs = ", k_u_obs);
   k_u_obs = normalize_null(X_u_obs, k_u_obs);
   console.log("normalized k_u_obs = ", k_u_obs);
@@ -370,6 +383,37 @@ function main() {
   console.log("Constructing tetrad...");
   var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
   console.log("tetrad is ", tet);
+
+  var tet2 = [
+	  [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
+	  [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
+	  [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
+	  [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
+  ];
+
+  console.log("e_u[0] = ",tet2[0]);
+  console.log("Inner product e_u[0] with e_u[0] is ", inner_product(X_u_obs, tet2[0], tet2[0]));
+  console.log("Inner product e_u[0] with e_u[1] is ", inner_product(X_u_obs, tet2[0], tet2[1]));
+  console.log("Inner product e_u[0] with e_u[2] is ", inner_product(X_u_obs, tet2[0], tet2[2]));
+  console.log("Inner product e_u[0] with e_u[3] is ", inner_product(X_u_obs, tet2[0], tet2[3]));
+
+  console.log("e_u[1] = ",tet2[1]);
+  console.log("Inner product e_u[1] with e_u[0] is ", inner_product(X_u_obs, tet2[1], tet2[0]));
+  console.log("Inner product e_u[1] with e_u[1] is ", inner_product(X_u_obs, tet2[1], tet2[1]));
+  console.log("Inner product e_u[1] with e_u[2] is ", inner_product(X_u_obs, tet2[1], tet2[2]));
+  console.log("Inner product e_u[1] with e_u[3] is ", inner_product(X_u_obs, tet2[1], tet2[3]));
+
+  console.log("e_u[2] = ",tet2[2]);
+  console.log("Inner product e_u[2] with e_u[0] is ", inner_product(X_u_obs, tet2[2], tet2[0]));
+  console.log("Inner product e_u[2] with e_u[1] is ", inner_product(X_u_obs, tet2[2], tet2[1]));
+  console.log("Inner product e_u[2] with e_u[2] is ", inner_product(X_u_obs, tet2[2], tet2[2]));
+  console.log("Inner product e_u[2] with e_u[3] is ", inner_product(X_u_obs, tet2[2], tet2[3]));
+
+  console.log("e_u[3] = ",tet2[3]);
+  console.log("Inner product e_u[3] with e_u[0] is ", inner_product(X_u_obs, tet2[3], tet2[0]));
+  console.log("Inner product e_u[3] with e_u[1] is ", inner_product(X_u_obs, tet2[3], tet2[1]));
+  console.log("Inner product e_u[3] with e_u[2] is ", inner_product(X_u_obs, tet2[3], tet2[2]));
+  console.log("Inner product e_u[3] with e_u[3] is ", inner_product(X_u_obs, tet2[3], tet2[3]));
 
   canvas = document.getElementById('canvas');
   width = canvas.width;
@@ -419,8 +463,8 @@ function main() {
   gl.vertexAttribPointer(texcoordAttributeLocation, size, type, normalize, stride, offset);
 
   // Create a texture.
-  var texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
+  var texture1 = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture1);
    
   // Fill the texture with a 1x1 blue pixel.
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
@@ -428,12 +472,28 @@ function main() {
    
   // Asynchronously load an image
   var image = new Image();
-  //image.crossOrigin = "anonymous";
-  image.src = "f-texture.png";
+  image.src = "deflectionmap.png";
   image.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+    gl.bindTexture(gl.TEXTURE_2D, texture1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+  });
+
+  // Create a second texture.
+  var texture2 = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture2);
+
+  // Fill the texture with a 1x1 blue pixel.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array([0, 0, 255, 255]));
+
+  var image2 = new Image(); // Load another image
+  image2.src = "background.png";
+  image2.addEventListener('load', function() {
+    // Now that the image has loaded make copy it to the texture.
+    gl.bindTexture(gl.TEXTURE_2D, texture2);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
     gl.generateMipmap(gl.TEXTURE_2D);
   });
 
@@ -441,11 +501,32 @@ function main() {
   // Make sure that we are using the right program first.
   gl.useProgram(program);
 
+  // lookup the sampler locations.
+  var u_image0Location = gl.getUniformLocation(program, "u_texture_deflection");
+  var u_image1Location = gl.getUniformLocation(program, "u_texture_background");
+ 
+  // set which texture units to render with.
+  gl.uniform1i(u_image0Location, 0);  // texture unit 0
+  gl.uniform1i(u_image1Location, 1);  // texture unit 1
+
+  // Set each texture unit to use a particular texture.
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, texture2);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture1);
+
+
   // The line below is how we ask the shader to give us the location in memory where a
   // 'uniform' type variable is stored in the shader code. Once we have this location,
   // we can write data into it.
   lc = gl.getUniformLocation(program, "resolution");
   gl.uniform2f(lc, width, height);
+
+  var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
+  gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
+
+  var Xobsloc = gl.getUniformLocation(program, "obs_pos");
+  gl.uniform4f(Xobsloc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
 
   //lc = gl.getUniformLocation(program, "camvecs");
   //gl.uniform1fv(lc, camvecs);
@@ -484,7 +565,7 @@ function main() {
     // Tell WebGL how to convert from clip space to pixels
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-    gl.clearColor(0.0, 0.5, 0.0, 1.0);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
     // Clear the canvas.
     gl.clear(gl.COLOR_BUFFER_BIT);
