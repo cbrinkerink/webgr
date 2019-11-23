@@ -120,6 +120,7 @@ float alphamax = PI;
 void main() {
   vec2 pos = vec2(1., resolution.y/resolution.x) * 2. * (gl_FragCoord.xy / resolution.xy - 0.5); // goes from -1 to 1 in X, and proportionally in Y according to viewport geometry.
   vec4 camvec = vec4(0., pos.y, -pos.x, 1.); // Set up the look direction for this pixel, in camera/tetrad space
+  camvec.z = camvec.z / sin(obs_pos.z); // This re-scaling is apparently needed to keep the field of view constant for varying observer theta position coordinates - but it is a workaround! We should figure out why this is the case.
   camvec = normalize(camvec);
   camvec.x = 1.; // set time component of look direction to 1 for future-proofing
   camvec = tetrad_u * camvec; // Convert look direction to world spherical coordinates using our tetrad
@@ -142,10 +143,12 @@ void main() {
   float ytex = acos(camvec_cartesian_rotated.z)/PI;
 
   vec4 col = texture(u_texture_background, vec2(xtex, ytex)); // Get RGBA from deflection angle texture map
-  //fragColor = vec4(tst/10., tst/10., tst/10., 1.0); // Set pixel colour to deflection angle, for testing
+
   if (deflectionangle < 0.) fragColor = vec4(0., 0., 0., 1.);
   else fragColor = col;
-  //fragColor = vec4((ip.x + 1.) * 0.5, (ip.y + 1.) * 0.5, (ip.z + 1.) * 0.5, 1.0);
+
+  // Debug stuff goes here
+  //fragColor = vec4(mod(camvec_cartesian.x, 0.1) * 10., mod(camvec_cartesian.y, 0.1) * 10., mod(camvec_cartesian.z,0.1) * 10., 1.0);
 }
 </script>
 

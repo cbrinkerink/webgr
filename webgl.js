@@ -17,6 +17,8 @@ var up_pressed = false;
 var down_pressed = false;
 var left_pressed = false;
 var right_pressed = false;
+var z_pressed = false;
+var x_pressed = false;
 
 // Define observer variables:
 var X_u_obs = [0., 99., Math.PI/2., Math.PI/2.];
@@ -308,6 +310,8 @@ function keydown(e) {
   if (keyCode == 39) right_pressed = true;
   if (keyCode == 38) up_pressed    = true;
   if (keyCode == 40) down_pressed  = true;
+  if (e.key == 'z') z_pressed = true;
+  if (e.key == 'x') x_pressed = true;
 }
 
 function checkInput() {
@@ -340,6 +344,20 @@ function checkInput() {
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
     requestAnimationFrame(render);
   }
+  if (z_pressed) {
+    X_u_obs[2] = X_u_obs[2] - 0.01;
+    gl.useProgram(program);
+    lc = gl.getUniformLocation(program, "obs_pos");
+    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
+    requestAnimationFrame(render);
+  }
+  if (x_pressed) {
+    X_u_obs[2] = X_u_obs[2] + 0.01;
+    gl.useProgram(program);
+    lc = gl.getUniformLocation(program, "obs_pos");
+    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
+    requestAnimationFrame(render);
+  }
 }
 
 function keyup(e) {
@@ -348,6 +366,8 @@ function keyup(e) {
   if (keyCode == 39) right_pressed = false;
   if (keyCode == 38) up_pressed    = false;
   if (keyCode == 40) down_pressed  = false;
+  if (e.key == 'z') z_pressed = false;
+  if (e.key == 'x') x_pressed = false;
 }
 
 function render() {
