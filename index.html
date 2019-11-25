@@ -143,6 +143,7 @@ void main() {
   float ytex = acos(camvec_cartesian_rotated.z)/PI;
 
   vec4 col = texture(u_texture_background, vec2(xtex, ytex)); // Get RGBA from deflection angle texture map
+  //vec4 col = texture(u_texture_deflection, gl_FragCoord.xy / resolution.xy); // Get RGBA from deflection angle texture map
 
   if (deflectionangle < 0.) fragColor = vec4(0., 0., 0., 1.);
   else fragColor = col;

@@ -321,42 +321,42 @@ function checkInput() {
     gl.useProgram(program);
     lc = gl.getUniformLocation(program, "obs_pos");
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   }
   if (right_pressed) {
     X_u_obs[3] = X_u_obs[3] + 0.01;
     gl.useProgram(program);
     lc = gl.getUniformLocation(program, "obs_pos");
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   }
   if (up_pressed) {
     X_u_obs[1] = X_u_obs[1] - 0.1;
     gl.useProgram(program);
     lc = gl.getUniformLocation(program, "obs_pos");
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   }
   if (down_pressed) {
     X_u_obs[1] = X_u_obs[1] + 0.1;
     gl.useProgram(program);
     lc = gl.getUniformLocation(program, "obs_pos");
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   }
   if (z_pressed) {
     X_u_obs[2] = X_u_obs[2] - 0.01;
     gl.useProgram(program);
     lc = gl.getUniformLocation(program, "obs_pos");
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   }
   if (x_pressed) {
     X_u_obs[2] = X_u_obs[2] + 0.01;
     gl.useProgram(program);
     lc = gl.getUniformLocation(program, "obs_pos");
     gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   }
 }
 
@@ -439,7 +439,7 @@ function main() {
   width = canvas.width;
   height = canvas.height;
 
-  fps = 90.;
+  fps = 900.;
   fpsInterval = 1000 / fps;
 
   // Add key press event listener
@@ -484,6 +484,7 @@ function main() {
 
   // Create a texture.
   var texture1 = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture1);
    
   // Fill the texture with a 1x1 blue pixel.
@@ -491,35 +492,53 @@ function main() {
                 new Uint8Array([0, 0, 255, 255]));
    
   // Asynchronously load an image
-  var image = new Image();
-  image.src = "deflectionmap.png";
-  image.addEventListener('load', function() {
+  var image1 = new Image();
+  image1.src = "deflectionmap.png";
+  image1.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image1);
     gl.generateMipmap(gl.TEXTURE_2D);
+    //gl.bindTexture(gl.TEXTURE_2D, null);
   });
 
   // Create a second texture.
   var texture2 = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, texture2);
 
   // Fill the texture with a 1x1 blue pixel.
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
                 new Uint8Array([0, 0, 255, 255]));
 
+  // Wait loop (used to test if a delay between image loadings would help to properly load both)
+  //var start = new Date().getTime();
+  //for (var i = 0; i < 1e7; i++) {
+  //  if ((new Date().getTime() - start) > 2000){
+  //    break;
+  //  }
+  //}
+
   var image2 = new Image(); // Load another image
-  image2.src = "background.png";
+  //image2.src = "simple.png";
+  image2.src = "starmap_hires.jpg";
   image2.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
+    gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, texture2);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
     gl.generateMipmap(gl.TEXTURE_2D);
+    //gl.bindTexture(gl.TEXTURE_2D, null);
   });
 
-  // Look up locations of other variables
-  // Make sure that we are using the right program first.
   gl.useProgram(program);
+
+  // Set each texture unit to use a particular texture.
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture1);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, texture2);
 
   // lookup the sampler locations.
   var u_image0Location = gl.getUniformLocation(program, "u_texture_deflection");
@@ -529,12 +548,9 @@ function main() {
   gl.uniform1i(u_image0Location, 0);  // texture unit 0
   gl.uniform1i(u_image1Location, 1);  // texture unit 1
 
-  // Set each texture unit to use a particular texture.
-  gl.activeTexture(gl.TEXTURE1);
-  gl.bindTexture(gl.TEXTURE_2D, texture2);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texture1);
-
+  // Look up locations of other variables
+  // Make sure that we are using the right program first.
+  gl.useProgram(program);
 
   // The line below is how we ask the shader to give us the location in memory where a
   // 'uniform' type variable is stored in the shader code. Once we have this location,
@@ -547,9 +563,6 @@ function main() {
 
   var Xobsloc = gl.getUniformLocation(program, "obs_pos");
   gl.uniform4f(Xobsloc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-
-  //lc = gl.getUniformLocation(program, "camvecs");
-  //gl.uniform1fv(lc, camvecs);
 
   // lookup uniforms
   var matrixLocation = gl.getUniformLocation(program, "u_matrix");
