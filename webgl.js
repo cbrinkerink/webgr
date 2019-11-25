@@ -445,7 +445,6 @@ function main() {
 
   // look up the text canvas.
   textcanvas = document.getElementById("textcanvas");
- 
   // make a 2D context for it
   ctx = textcanvas.getContext("2d");
 
@@ -457,7 +456,6 @@ function main() {
   document.body.addEventListener("keyup", keyup, false);
 
   // Get A WebGL context
-  var canvas = document.getElementById("canvas");
   gl = canvas.getContext("webgl2");
   if (!gl) {
     return;
