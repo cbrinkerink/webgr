@@ -7,7 +7,7 @@ var gl;
 var program;
 var fps, fpsInterval, now, then;
 
-var canvas;
+var canvas, textcanvas, ctx;
 var width;
 var height;
 
@@ -373,6 +373,10 @@ function keyup(e) {
 function render() {
   now = Date.now();
   if (now - then > fpsInterval) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.font = "30px Arial";
+    ctx.fillStyle = "white";
+    ctx.fillText("Current radius: " + X_u_obs[1].toFixed(2).toString(), 10, 590);
     then = now;
     checkInput();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -438,6 +442,12 @@ function main() {
   canvas = document.getElementById('canvas');
   width = canvas.width;
   height = canvas.height;
+
+  // look up the text canvas.
+  textcanvas = document.getElementById("textcanvas");
+ 
+  // make a 2D context for it
+  ctx = textcanvas.getContext("2d");
 
   fps = 900.;
   fpsInterval = 1000 / fps;
