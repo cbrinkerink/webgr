@@ -125,7 +125,7 @@ float alphamax = PI;
 void main() {
   vec2 pos = vec2(1., resolution.y/resolution.x) * 2. * (gl_FragCoord.xy / resolution.xy - 0.5); // goes from -1 to 1 in X, and proportionally in Y according to viewport geometry.
   vec4 camvec = vec4(0., pos.y, -pos.x, 1.); // Set up the look direction for this pixel, in camera/tetrad space
-  camvec.z = camvec.z / sin(obs_pos.z); // This re-scaling is apparently needed to keep the field of view constant for varying observer theta position coordinates - but it is a workaround! We should figure out why this is the case.
+  //camvec.z = camvec.z / sin(obs_pos.z); // This re-scaling is apparently needed to keep the field of view constant for varying observer theta position coordinates - but it is a workaround! We should figure out why this is the case.
   camvec = normalize(camvec);
   camvec.x = 1.; // set time component of look direction to 1 for future-proofing
   camvec = tetrad_u * camvec; // Convert look direction to world spherical coordinates using our tetrad
