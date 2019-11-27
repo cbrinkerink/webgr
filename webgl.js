@@ -25,7 +25,6 @@ var X_u_obs = [0., 99., Math.PI/2., Math.PI/2.];
 var U_u_obs = construct_U_vector(X_u_obs);
 //var u_u_obs = [0., 0., 0.01, 0.];
 var u_u_obs = [0., 0., -0.01, 0.]; // up direction
-//var k_u_obs = [0., -1., 0., 0.];
 var k_u_obs = [0., -1., 0., 0.]; // look direction
 k_u_obs = normalize_null(X_u_obs, k_u_obs);
 
@@ -531,12 +530,18 @@ function main() {
   var image2 = new Image(); // Load another image
   //image2.src = "simple.png";
   image2.src = "starmap_hires.jpg";
+  //image2.src = "starmap_lores.jpg";
   image2.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, texture2);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
     gl.generateMipmap(gl.TEXTURE_2D);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT );
     //gl.bindTexture(gl.TEXTURE_2D, null);
   });
 
