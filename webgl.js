@@ -11,14 +11,16 @@ var canvas, textcanvas, ctx;
 var width;
 var height;
 
-var windowSize = 600;
-
 var up_pressed = false;
 var down_pressed = false;
 var left_pressed = false;
 var right_pressed = false;
 var z_pressed = false;
 var x_pressed = false;
+var leftbracket_pressed = false;
+var rightbracket_pressed = false;
+var minus_pressed = false;
+var equals_pressed = false;
 
 // Define observer variables:
 var X_u_obs = [0., 99., Math.PI/2., Math.PI/2.];
@@ -311,6 +313,10 @@ function keydown(e) {
   if (keyCode == 40) down_pressed  = true;
   if (e.key == 'z') z_pressed = true;
   if (e.key == 'x') x_pressed = true;
+  if (e.key == ']') rightbracket_pressed = true;
+  if (e.key == '[') leftbracket_pressed = true;
+  if (e.key == '-') minus_pressed = true;
+  if (e.key == '=') equals_pressed = true;
 }
 
 function checkInput() {
@@ -417,6 +423,60 @@ function checkInput() {
     gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
     //requestAnimationFrame(render);
   }
+  if (leftbracket_pressed) {
+    // Reduce the canvas x size
+    width = document.getElementById("canvas").width;
+    if (width > 100) {
+      width = width - 100;
+      document.getElementById("canvas").width = width;
+      document.getElementById("textcanvas").width = width;
+      ctx = textcanvas.getContext("2d");
+      lc = gl.getUniformLocation(program, "resolution");
+      gl.uniform2f(lc, width, height);
+      gl.viewport(0, 0, width, height);
+    }
+    leftbracket_pressed = false;
+  }
+
+  if (rightbracket_pressed) {
+    // Increase the canvas x size
+    width = document.getElementById("canvas").width;
+    width = width + 100;
+    document.getElementById("canvas").width = width;
+    document.getElementById("textcanvas").width = width;
+    ctx = textcanvas.getContext("2d");
+    lc = gl.getUniformLocation(program, "resolution");
+    gl.uniform2f(lc, width, height);
+    gl.viewport(0, 0, width, height);
+    rightbracket_pressed = false;
+  }
+  if (minus_pressed) {
+    // Reduce the canvas y size
+    height = document.getElementById("canvas").height;
+    if (height > 50) {
+      height = height - 50;
+      document.getElementById("canvas").height = height;
+      document.getElementById("textcanvas").height = height;
+      ctx = textcanvas.getContext("2d");
+      lc = gl.getUniformLocation(program, "resolution");
+      gl.uniform2f(lc, width, height);
+      gl.viewport(0, 0, width, height);
+    }
+    leftbracket_pressed = false;
+  }
+
+  if (equals_pressed) {
+    // Increase the canvas y size
+    height = document.getElementById("canvas").height;
+    height = height + 50;
+    document.getElementById("canvas").height = height;
+    document.getElementById("textcanvas").height = height;
+    ctx = textcanvas.getContext("2d");
+    lc = gl.getUniformLocation(program, "resolution");
+    gl.uniform2f(lc, width, height);
+    gl.viewport(0, 0, width, height);
+    rightbracket_pressed = false;
+  }
 }
 
 function keyup(e) {
@@ -427,15 +487,19 @@ function keyup(e) {
   if (keyCode == 40) down_pressed  = false;
   if (e.key == 'z') z_pressed = false;
   if (e.key == 'x') x_pressed = false;
+  if (e.key == ']') rightbracket_pressed = false;
+  if (e.key == '[') leftbracket_pressed = false;
+  if (e.key == '-') minus_pressed = false;
+  if (e.key == '=') equals_pressed = false;
 }
 
 function render() {
   now = Date.now();
   if (now - then > fpsInterval) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.font = "30px Arial";
+    ctx.font = "20px Arial";
     ctx.fillStyle = "white";
-    ctx.fillText("Current radius: " + X_u_obs[1].toFixed(2).toString(), 10, 590);
+    ctx.fillText("Current radius: " + X_u_obs[1].toFixed(2).toString(), 10, height - 10);
     then = now;
     checkInput();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
