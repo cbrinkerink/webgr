@@ -116,7 +116,8 @@ float DecodeFloatRGBA( vec4 rgba ) {
 // Alpha goes from away from the BH to straight towards the BH.
 // Min deflection angle is -1. (BH), max is 6.26672883. All in radians.
 float datamin = -1.;
-float datamax = 6.26672883;
+//float datamax = 6.26672883; // lores deflection map max value
+float datamax = 6.28293663; // hires (2048) deflection map max value
 float rmin = 2.0000001;
 float rmax = 100.;
 float alphamin = 0.;

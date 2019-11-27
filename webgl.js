@@ -560,7 +560,7 @@ function main() {
    
   // Asynchronously load an image
   var image1 = new Image();
-  image1.src = "deflectionmap.png";
+  image1.src = "deflectionmap_2048.png";
   image1.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
     gl.activeTexture(gl.TEXTURE0);
