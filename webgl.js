@@ -593,6 +593,18 @@ function mousemove(e) {
       console.log("cross(lookdir_cart, updir_cart): ", cross(lookdir_cart, updir_cart));
       console.log("mult(updir_cart, e.movementX): ", mult(updir_cart, e.movementX));
       console.log("mult(rightdir_cart, e.movementY): ", mult(rightdir_cart, e.movementY));
+
+      // Rotate lookdir horizontally
+      var lookdir_cart_r = add(mult(lookdir_cart, Math.cos(e.movementX / 100.)), mult(rightdir_cart, Math.sin(e.movementX / 100.)));
+      // Rotate rightdir horizontally
+      var rightdir_cart_r = add(mult(rightdir_cart, Math.cos(e.movementX / 100.)), mult(lookdir_cart, -Math.sin(e.movementX / 100.)));
+      // Rotate updir vertically, using new horizontally moved lookdir
+      var updir_cart_r = add(mult(updir_cart, Math.cos(e.movementY / 100.)), mult(lookdir_cart_r, Math.sin(e.movementY / 100.)));
+      // Get new lookdir by crossing new right and new up.
+      lookdir_cart_r = normalize(cross(updir_cart_r, rightdir_cart_r));
+
+      // Previous, composite rotation algorithm. Does not work properly (but should!). Left alone for now.
+      /*
       var rotdir_cart = normalize(add(mult(updir_cart, e.movementX), mult(rightdir_cart, e.movementY)));
       console.log("rotation axis: ", rotdir_cart);
       var angle = Math.sqrt(e.movementX * e.movementX + e.movementY * e.movementY)/100.;
@@ -601,11 +613,16 @@ function mousemove(e) {
 		           mult(normalize(cross(rotdir_cart,lookdir_cart)),Math.sin(-angle))), 
 		           mult(mult(rotdir_cart, inprod(rotdir_cart, lookdir_cart)), (1. - Math.cos(angle))));
       var updir_cart_r = updir_cart;
+      // NOTE: we can only rotate our 'up' vector if our mouse movement has a y-component!
+      // Otherwise our cross-product will collapse as our up direction does not change,
+      // with only an x movement of the mouse.
       if (e.movementY != 0) {
         updir_cart_r = add(add(mult(updir_cart, Math.cos(angle)),
 	      	               mult(normalize(cross(rotdir_cart,updir_cart)),Math.sin(-angle))), 
 		           mult(mult(rotdir_cart, inprod(rotdir_cart, updir_cart)), (1. - Math.cos(angle))));
       }
+      */
+
       //console.log("rotated lookdir: ", lookdir_cart_r);
       //console.log("rotated updir: ", updir_cart_r);
       // We can now update our k_u_obs vector and u_u_obs vector with these two.
