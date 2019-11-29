@@ -370,6 +370,7 @@ function checkInput() {
   if (up_pressed) {
     X_u_obs[1] = X_u_obs[1] - 0.1;
     k_u_obs = normalize_null(X_u_obs, k_u_obs);
+    U_u_obs = construct_U_vector(X_u_obs);
     var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
     var tet2 = [
                 [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
