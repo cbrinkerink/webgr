@@ -7,6 +7,8 @@ var gl;
 var program;
 var fps, fpsInterval, now, then;
 
+var alpha_corr = 1.;
+
 var canvas, textcanvas, ctx;
 var width;
 var height;
@@ -21,13 +23,21 @@ var leftbracket_pressed = false;
 var rightbracket_pressed = false;
 var minus_pressed = false;
 var equals_pressed = false;
+var q_pressed = false;
+var a_pressed = false;
+
+var pointerLock = false;
 
 // Define observer variables:
-var X_u_obs = [0., 99., Math.PI/2., Math.PI/2.];
-var U_u_obs = construct_U_vector(X_u_obs);
-//var u_u_obs = [0., 0., 0.01, 0.];
-var u_u_obs = [0., 0., -0.01, 0.]; // up direction
+var lookdir_cart  = [-1., 0., 0.];
+var updir_cart    = [0., 0., 1.];
+
+var X_u_obs = [0., 99., Math.PI/2., 0.];
+var U_u_obs = construct_U_vector(X_u_obs); // 4-velocity of observer
+var u_u_obs = [0., 0., -0.01, 0.];
+//var u_u_obs = [0., 0., -0.01, 0.]; // up direction
 var k_u_obs = [0., -1., 0., 0.]; // look direction
+//var k_u_obs = [0., 0., 0., 0.01]; // look direction
 k_u_obs = normalize_null(X_u_obs, k_u_obs);
 
 var levciv = make_levciv();
@@ -317,6 +327,8 @@ function keydown(e) {
   if (e.key == '[') leftbracket_pressed = true;
   if (e.key == '-') minus_pressed = true;
   if (e.key == '=') equals_pressed = true;
+  if (e.key == 'q') q_pressed = true;
+  if (e.key == 'a') a_pressed = true;
 }
 
 function checkInput() {
@@ -477,6 +489,20 @@ function checkInput() {
     gl.viewport(0, 0, width, height);
     rightbracket_pressed = false;
   }
+
+  if (q_pressed) {
+    alpha_corr = alpha_corr + 0.01;
+    lc = gl.getUniformLocation(program, "alpha_corr");
+    gl.uniform1f(lc, alpha_corr);    
+  }
+
+  if (a_pressed) {
+    alpha_corr = alpha_corr - 0.01;
+    if (alpha_corr < 0.) alpha_corr = 0.;
+    lc = gl.getUniformLocation(program, "alpha_corr");
+    gl.uniform1f(lc, alpha_corr);    
+  }
+
 }
 
 function keyup(e) {
@@ -491,6 +517,117 @@ function keyup(e) {
   if (e.key == '[') leftbracket_pressed = false;
   if (e.key == '-') minus_pressed = false;
   if (e.key == '=') equals_pressed = false;
+  if (e.key == 'q') q_pressed = false;
+  if (e.key == 'a') a_pressed = false;
+}
+
+function mousedown(e) {
+  console.log("Mouse clicked!");
+  if (!pointerLock) {
+    canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+    canvas.requestPointerLock();
+    console.log("Pointer locked!");
+    pointerLock = true;
+  } else {
+    document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
+    // Attempt to unlock
+    document.exitPointerLock();
+    console.log("Pointer unlocked!");
+    pointerLock = false;
+  }
+}
+
+// Calculate cross product of 2 3D cartesian vectors.
+function cross(v1, v2) {
+  var vout = [v1[1] * v2[2] - v1[2] * v2[1], v1[2] * v2[0] - v1[0] * v2[2], v1[0] * v2[1] - v1[1] * v2[0]];
+  return vout;
+}
+
+// Calculate inner product of 2 3D cartesian vectors.
+function inprod(v1, v2) {
+  return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+}
+
+// Set the length of a 3D cartesian vector to 1.
+function normalize(v1) {
+  var l = Math.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
+  return [v1[0] / l, v1[1]/l, v1[2]/l];
+}
+
+// Multiply a cartesian vector with a scalar.
+function mult(v1, s1) {
+  return [v1[0] * s1, v1[1] * s1, v1[2] * s1];
+}
+
+// Add two cartesian vectors together.
+function add (v1, v2) {
+  return [v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]];
+}
+
+// Transform a pseudo-cartesian vector to spherical coordinates, using the observer position.
+function cart_to_sphere(cv, obspos) {
+  // Construct basis vector for radial direction in cartesian coordinates
+  var rdir = [Math.cos(obspos[3]) * Math.sin(obspos[2]), 
+              Math.sin(obspos[3]) * Math.sin(obspos[2]),
+              Math.cos(obspos[2])];
+  //console.log("rdir = ",rdir);
+  // Construct basis vector for theta direction in cartesian coordinates
+  var thetadir = [Math.cos(obspos[3]) * Math.cos(obspos[2]), 
+                  Math.sin(obspos[3]) * Math.cos(obspos[2]),
+                  -Math.sin(obspos[2])];
+  //console.log("thetadir = ",thetadir);
+  var phidir = [-Math.sin(obspos[3]), Math.cos(obspos[3]) ,0.];
+  //console.log("phidir = ",phidir);
+  var res = [0., inprod(cv, rdir), inprod(cv, thetadir)/obspos[1], inprod(cv, phidir)/obspos[1]];
+  return res;
+}
+
+function mousemove(e) {
+  // Down and to the right is positive
+  if (pointerLock) {
+    if (e.movementX != 0 && e.movementY != 0) {
+      //console.log("X: ", e.movementX, ", Y: ", e.movementY);
+      // Let's use our pseudo-cartesian orientation and our mouse move vector to determine our rotation vector.
+      // We then need to update our three camera vectors (lookdir, updir, rightdir) according to this rotation.
+      var rightdir_cart = normalize(cross(lookdir_cart, updir_cart));
+      var rotdir_cart = normalize(add(mult(updir_cart, e.movementX), mult(rightdir_cart, e.movementY)));
+      //console.log("rotation axis: ", rotdir_cart);
+      var angle = Math.sqrt(e.movementX * e.movementX + e.movementY * e.movementY)/100.;
+      //console.log("rotation angle: ", angle);
+      var lookdir_cart_r = add(add(mult(lookdir_cart, Math.cos(angle)),
+		           mult(normalize(cross(rotdir_cart,lookdir_cart)),Math.sin(-angle))), 
+		           mult(mult(rotdir_cart, inprod(rotdir_cart, lookdir_cart)), (1. - Math.cos(angle))));
+      var updir_cart_r = add(add(mult(updir_cart, Math.cos(angle)),
+		         mult(normalize(cross(rotdir_cart,updir_cart)),Math.sin(-angle))), 
+		         mult(mult(rotdir_cart, inprod(rotdir_cart, updir_cart)), (1. - Math.cos(angle))));
+      //console.log("rotated lookdir: ", lookdir_cart_r);
+      //console.log("rotated updir: ", updir_cart_r);
+      // We can now update our k_u_obs vector and u_u_obs vector with these two.
+      // NOTE: we have to take care because the world direction of k_u_obs depends on what X_u_obs is.
+      // So, we need to capture the relation between the rotated cartesian directions and our observer position
+      // to effectively calculate k_u_obs and u_u_obs.
+      k_u_obs = cart_to_sphere(lookdir_cart_r, X_u_obs);
+      //console.log("New k_u_obs: ", k_u_obs);
+      k_u_obs = normalize_null(X_u_obs, cart_to_sphere(lookdir_cart_r, X_u_obs));
+      //console.log("New k_u_obs: ", k_u_obs);
+      u_u_obs = cart_to_sphere(updir_cart_r, X_u_obs);
+
+      // Refresh cartesian look/up vectors with rotated ones
+      lookdir_cart = lookdir_cart_r;
+      updir_cart = updir_cart_r;
+
+      var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
+
+      var tet2 = [
+        [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
+        [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
+        [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
+        [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
+        ];
+      var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
+      gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
+    }
+  }
 }
 
 function render() {
@@ -508,6 +645,92 @@ function render() {
   }
   requestAnimationFrame(render);
 }
+
+/////////////// Shader functions reproduced here for testing ////////
+
+//vec4 normt(vec4 invec) {
+//  invec.x = sqrt(invec.y * invec.y + invec.z * invec.z + invec.w * invec.w);
+//  return invec;
+//}
+function shader_normt(iv) {
+  iv[0] = Math.sqrt(iv[1] * iv[1] + iv[2] * iv[2] + iv[3] * iv[3]);
+  return iv;
+}
+
+//vec3 convert_lookdir_to_cartesian(vec4 l, vec4 p) {
+//  vec3 cl = normalize(vec3(l.y * sin(p.z) * cos(p.w) + l.z * p.y * cos(p.z) * cos(p.w) + l.w * -p.y * sin(p.z) * sin(p.w),
+//                           l.y * sin(p.z) * sin(p.w) + l.z * p.y * cos(p.z) * sin(p.w) + l.w *  p.y * sin(p.z) * cos(p.w),
+//                           l.y * cos(p.z)            - l.z * p.y * sin(p.z)            + 0.));
+//  return cl;
+//}
+function shader_convert_lookdir_to_cartesian(vl, vp) {
+  var vcl = [vl[1] * Math.sin(vp[2]) * Math.cos(vp[3]) + vl[2] * vp[1] * Math.cos(vp[2]) * Math.cos(vp[3]) + vl[3] * -vp[1] * Math.sin(vp[2]) * Math.sin(vp[3]),
+	 vl[1] * Math.sin(vp[2]) * Math.sin(vp[3]) + vl[2] * vp[1] * Math.cos(vp[2]) * Math.sin(vp[3]) + vl[3] *  vp[1] * Math.sin(vp[2]) * Math.cos(vp[3]),
+	 vl[1] * Math.cos(vp[2])                   - vl[2] * vp[1] * Math.sin(vp[2])];
+  var vcllength = Math.sqrt(vcl[0] * vcl[0] + vcl[1] * vcl[1] + vcl[2] * vcl[2]);
+  vcl[0] = vcl[0] / vcllength;
+  vcl[1] = vcl[1] / vcllength;
+  vcl[2] = vcl[2] / vcllength;
+  return vcl;
+}
+
+//vec3 convert_position_to_cartesian(vec4 p) {
+//  vec3 cp = normalize(vec3(sin(p.z) * cos(p.w), sin(p.z) * sin(p.w), cos(p.z)));
+//  return cp;
+//}
+function shader_convert_position_to_cartesian(vp) {
+  var vcp = [Math.sin(vp[2]) * Math.cos(vp[3]), Math.sin(vp[2]) * Math.sin(vp[3]), Math.cos(vp[2])];
+  return vcp;
+}
+
+//vec3 inprod(vec4 l, vec4 p, out float mag) {
+//  // Only use spatial components of the 4-vectors for now.
+//  // x = t, y = r, z = theta, w = phi.
+//  //Make cartesian versions of both vectors, pretending we are in flat space.
+//  vec3 cl = normalize(vec3(l.y * sin(p.z) * cos(p.w) + l.z * p.y * cos(p.z) * cos(p.w) + l.w * -p.y * sin(p.z) * sin(p.w),
+//                           l.y * sin(p.z) * sin(p.w) + l.z * p.y * cos(p.z) * sin(p.w) + l.w *  p.y * sin(p.z) * cos(p.w),
+//                           l.y * cos(p.z)            - l.z * p.y * sin(p.z)            + 0.));
+//  vec3 cp = normalize(vec3(sin(p.z) * cos(p.w), sin(p.z) * sin(p.w), cos(p.z)));
+//  mag = (cl.x * cp.x + cl.y * cp.y + cl.z * cp.z);
+//  return cross(cp, cl);
+//}
+function shader_inprod(vl, vp) {
+  var vcl = [vl[1] * Math.sin(vp[2]) * Math.cos(vp[3]) + vl[2] * vp[1] * Math.cos(vp[2]) * Math.cos(vp[3]) + vl[3] * -vp[1] * Math.sin(vp[2]) * Math.sin(vp[3]),
+    	     vl[1] * Math.sin(vp[2]) * Math.sin(vp[3]) + vl[2] * vp[1] * Math.cos(vp[2]) * Math.sin(vp[3]) + vl[3] *  vp[1] * Math.sin(vp[2]) * Math.cos(vp[3]),
+	     vl[1] * Math.cos(vp[2])                   - vl[2] * vp[1] * Math.sin(vp[2])];
+  var vcllength = Math.sqrt(vcl[0] * vcl[0] + vcl[1] * vcl[1] + vcl[2] * vcl[2]);
+  vcl[0] = vcl[0] / vcllength;
+  vcl[1] = vcl[1] / vcllength;
+  vcl[2] = vcl[2] / vcllength;
+  var vcp = [Math.sin(vp[2]) * Math.cos(vp[3]), Math.sin(vp[2]) * Math.sin(vp[3]), Math.cos(vp[2])];
+  var mag = vcl[0] * vcp[0] + vcl[1] * vcp[1] + vcl[2] * vcp[2];
+  var cross = [vcp[1] * vcl[2] - vcl[1] * vcp[2],
+	       vcp[2] * vcl[0] - vcl[2] * vcp[0],
+	       vcp[0] * vcl[1] - vcl[0] * vcp[1]];
+  return [mag, cross];
+}
+
+function testcamera(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
+  var camvec = [1., 0., 0., 1.];
+  var camvec_length = Math.sqrt(camvec[1] * camvec[1] + camvec[2] * camvec[2] + camvec[3] * camvec[3]);
+  camvec[1] = camvec[1] / camvec_length;
+  camvec[2] = camvec[2] / camvec_length;
+  camvec[3] = camvec[3] / camvec_length;
+  var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
+  var camvec_world = [tet[0][0] * camvec[0] + tet[0][1] * camvec[1] + tet[0][2] * camvec[2] + tet[0][3] * camvec[3],
+	              tet[1][0] * camvec[0] + tet[1][1] * camvec[1] + tet[1][2] * camvec[2] + tet[1][3] * camvec[3],
+	              tet[2][0] * camvec[0] + tet[2][1] * camvec[1] + tet[2][2] * camvec[2] + tet[2][3] * camvec[3],
+	              tet[3][0] * camvec[0] + tet[3][1] * camvec[1] + tet[3][2] * camvec[2] + tet[3][3] * camvec[3]
+                      ];
+  console.log("Camera world: ", camvec_world); // This should be the same as k_u_obs
+  var camvec_cart = shader_convert_lookdir_to_cartesian(camvec_world, X_u_obs);
+  var obspos_cart = shader_convert_position_to_cartesian(X_u_obs);
+  console.log("Camera cartesian: ", camvec_cart);
+  console.log("Position cartesian: ",obspos_cart);
+}
+
+/////////////////////////////////////////////////////////////////////
+
 
 function main() {
   console.log("Starting!");
@@ -562,6 +785,8 @@ function main() {
   console.log("Inner product e_u[3] with e_u[2] is ", inner_product(X_u_obs, tet2[3], tet2[2]));
   console.log("Inner product e_u[3] with e_u[3] is ", inner_product(X_u_obs, tet2[3], tet2[3]));
 
+  testcamera(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
+
   canvas = document.getElementById('canvas');
   width = canvas.width;
   height = canvas.height;
@@ -577,6 +802,9 @@ function main() {
   // Add key press event listener
   document.body.addEventListener("keydown", keydown, false);
   document.body.addEventListener("keyup", keyup, false);
+
+  document.body.addEventListener("mousedown", mousedown, false);
+  document.body.addEventListener("mousemove", mousemove, false);
 
   // Get A WebGL context
   gl = canvas.getContext("webgl2");
@@ -694,6 +922,9 @@ function main() {
   // we can write data into it.
   lc = gl.getUniformLocation(program, "resolution");
   gl.uniform2f(lc, width, height);
+
+  lc = gl.getUniformLocation(program, "alpha_corr");
+  gl.uniform1f(lc, alpha_corr);    
 
   var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
   gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());

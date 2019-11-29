@@ -67,6 +67,8 @@ in vec2 v_texcoord;
 uniform sampler2D u_texture_background;
 uniform sampler2D u_texture_deflection;
 
+uniform float alpha_corr;
+
 out vec4 fragColor;
 
 const float x = 1.0/255.0;
@@ -141,9 +143,11 @@ void main() {
   vec4 tc = texture(u_texture_deflection, vec2(rfrac, alphafrac)); // Get RGBA from deflection angle texture map
   //vec4 tc = texture(u_texture_background, vec2(xtex, ytex));
   float deflectionangle = datamin + tc.x * (datamax - datamin) + tc.y * (datamax - datamin)/255. + tc.z * (datamax - datamin)/(255.*255.) + tc.w * (datamax - datamin)/(255.*255.*255.); // Convert the RGBA components into a float value using our mapping rule defined earlier
+  deflectionangle = deflectionangle * alpha_corr - alpha;
 
   // Now we have the deflection angle and the vector to rotate our camvec around.
-  vec3 camvec_cartesian_rotated = camvec_cartesian * cos(-deflectionangle) + cross(ip,camvec_cartesian) * sin(-deflectionangle) + ip * dot(ip, camvec_cartesian) * (1. - cos(-deflectionangle));
+  vec3 camvec_cartesian_rotated = camvec_cartesian * cos(-deflectionangle) + normalize(cross(ip,camvec_cartesian)) * sin(-deflectionangle) + ip * dot(ip, camvec_cartesian) * (1. - cos(-deflectionangle));
+  //vec3 camvec_cartesian_rotated = camvec_cartesian;
 
   float xtex = (atan(camvec_cartesian_rotated.y, camvec_cartesian_rotated.x) + PI) / (2. * PI); // so that the coordinate runs from 0 to 1
   float ytex = acos(camvec_cartesian_rotated.z)/PI; // so that this also runs from 0 to 1
@@ -151,15 +155,17 @@ void main() {
   float fx = mod(xtex, 1./4096.); // fractional x texture pixel coordinate
   float fy = mod(ytex, 1./2048.); // fractional y texture pixel coordinate
   // Here, we make a weighted sum of our closest texture pixels.
-  vec4 col = (1. - fx) * (1. - fy) * texture(u_texture_background, vec2(xtex - fx,                          ytex - fy))  + // top left
-                  (fx) * (1. - fy) * texture(u_texture_background, vec2(xtex + (1./4096. - fx),             ytex - fy))  + // top right
-             (1. - fx) *      (fy) * texture(u_texture_background, vec2(xtex - fx,              ytex + (1./2048. - fy))) + // bottom left
-                  (fx) *      (fy) * texture(u_texture_background, vec2(xtex + (1./4096. - fx), ytex + (1./2048. - fy)));  // bottom right
+  //vec4 col = (1. - fx) * (1. - fy) * texture(u_texture_background, vec2(xtex - fx,                          ytex - fy))  + // top left
+  //                (fx) * (1. - fy) * texture(u_texture_background, vec2(xtex + (1./4096. - fx),             ytex - fy))  + // top right
+  //           (1. - fx) *      (fy) * texture(u_texture_background, vec2(xtex - fx,              ytex + (1./2048. - fy))) + // bottom left
+  //                (fx) *      (fy) * texture(u_texture_background, vec2(xtex + (1./4096. - fx), ytex + (1./2048. - fy)));  // bottom right
   // Old, non-interpolated version:
-  //vec4 col = texture(u_texture_background, vec2(xtex, ytex)); // Get RGBA from deflection angle texture map
+  vec4 col = texture(u_texture_background, vec2(xtex, ytex)); // Get RGBA from deflection angle texture map
 
   if (deflectionangle < 0.) fragColor = vec4(0., 0., 0., 1.);
   else fragColor = col;
+  //else fragColor = vec4(0.5 + 0.5 * camvec_cartesian.z, 0., 0., 1.);
+  //else fragColor = vec4(10. * mod(xtex,0.1), ytex, 0., 1.);
 
   // Debug stuff goes here
   //fragColor = vec4(mod(camvec_cartesian.x, 0.1) * 10., mod(camvec_cartesian.y, 0.1) * 10., mod(camvec_cartesian.z,0.1) * 10., 1.0);
