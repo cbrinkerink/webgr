@@ -162,7 +162,7 @@ void main() {
   // Old, non-interpolated version:
   vec4 col = texture(u_texture_background, vec2(xtex, ytex)); // Get RGBA from deflection angle texture map
 
-  if (deflectionangle < 0.) fragColor = vec4(0., 0., 0., 1.);
+  if (deflectionangle < -0.1) fragColor = vec4(0., 0., 0., 1.);
   else fragColor = col;
   //else fragColor = vec4(0.5 + 0.5 * camvec_cartesian.z, 0., 0., 1.);
   //else fragColor = vec4(10. * mod(xtex,0.1), ytex, 0., 1.);

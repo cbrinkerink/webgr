@@ -585,21 +585,27 @@ function cart_to_sphere(cv, obspos) {
 function mousemove(e) {
   // Down and to the right is positive
   if (pointerLock) {
-    if (e.movementX != 0 && e.movementY != 0) {
+    if (e.movementX != 0 || e.movementY != 0) {
       //console.log("X: ", e.movementX, ", Y: ", e.movementY);
       // Let's use our pseudo-cartesian orientation and our mouse move vector to determine our rotation vector.
-      // We then need to update our three camera vectors (lookdir, updir, rightdir) according to this rotation.
+      // We then need to update our two camera vectors (lookdir, updir) according to this rotation.
       var rightdir_cart = normalize(cross(lookdir_cart, updir_cart));
+      console.log("cross(lookdir_cart, updir_cart): ", cross(lookdir_cart, updir_cart));
+      console.log("mult(updir_cart, e.movementX): ", mult(updir_cart, e.movementX));
+      console.log("mult(rightdir_cart, e.movementY): ", mult(rightdir_cart, e.movementY));
       var rotdir_cart = normalize(add(mult(updir_cart, e.movementX), mult(rightdir_cart, e.movementY)));
-      //console.log("rotation axis: ", rotdir_cart);
+      console.log("rotation axis: ", rotdir_cart);
       var angle = Math.sqrt(e.movementX * e.movementX + e.movementY * e.movementY)/100.;
       //console.log("rotation angle: ", angle);
       var lookdir_cart_r = add(add(mult(lookdir_cart, Math.cos(angle)),
 		           mult(normalize(cross(rotdir_cart,lookdir_cart)),Math.sin(-angle))), 
 		           mult(mult(rotdir_cart, inprod(rotdir_cart, lookdir_cart)), (1. - Math.cos(angle))));
-      var updir_cart_r = add(add(mult(updir_cart, Math.cos(angle)),
-		         mult(normalize(cross(rotdir_cart,updir_cart)),Math.sin(-angle))), 
-		         mult(mult(rotdir_cart, inprod(rotdir_cart, updir_cart)), (1. - Math.cos(angle))));
+      var updir_cart_r = updir_cart;
+      if (e.movementY != 0) {
+        updir_cart_r = add(add(mult(updir_cart, Math.cos(angle)),
+	      	               mult(normalize(cross(rotdir_cart,updir_cart)),Math.sin(-angle))), 
+		           mult(mult(rotdir_cart, inprod(rotdir_cart, updir_cart)), (1. - Math.cos(angle))));
+      }
       //console.log("rotated lookdir: ", lookdir_cart_r);
       //console.log("rotated updir: ", updir_cart_r);
       // We can now update our k_u_obs vector and u_u_obs vector with these two.
@@ -616,6 +622,7 @@ function mousemove(e) {
       lookdir_cart = lookdir_cart_r;
       updir_cart = updir_cart_r;
 
+      // re-construct our camera tetrad with the updated vectors
       var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
 
       var tet2 = [
@@ -624,6 +631,8 @@ function mousemove(e) {
         [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
         [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
         ];
+
+      // Upload our new tetrad to the GPU
       var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
       gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
     }
@@ -785,7 +794,7 @@ function main() {
   console.log("Inner product e_u[3] with e_u[2] is ", inner_product(X_u_obs, tet2[3], tet2[2]));
   console.log("Inner product e_u[3] with e_u[3] is ", inner_product(X_u_obs, tet2[3], tet2[3]));
 
-  testcamera(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
+  //testcamera(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
 
   canvas = document.getElementById('canvas');
   width = canvas.width;
