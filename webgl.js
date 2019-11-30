@@ -24,6 +24,10 @@ var rightbracket_pressed = false;
 var minus_pressed = false;
 var equals_pressed = false;
 var q_pressed = false;
+var w_pressed = false;
+var e_pressed = false;
+var s_pressed = false;
+var d_pressed = false;
 var a_pressed = false;
 
 var pointerLock = false;
@@ -332,41 +336,46 @@ function keydown(e) {
   if (e.key == '=') equals_pressed = true;
   if (e.key == 'q') q_pressed = true;
   if (e.key == 'a') a_pressed = true;
+  if (e.key == 'w') w_pressed = true;
+  if (e.key == 's') s_pressed = true;
+  if (e.key == 'd') d_pressed = true;
+  if (e.key == 'e') e_pressed = true;
+
 }
 
 function checkInput() {
   //console.log("Checking input state!");
-  if (left_pressed) {
+  if (left_pressed || a_pressed) {
     // Move the cartesian observer position laterally left by a small amount
     obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), 0.1));
     var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
     X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
-  if (right_pressed) {
+  if (right_pressed || d_pressed) {
     // Move the cartesian observer position laterally right by a small amount
     obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), -0.1));
     var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
     X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
-  if (up_pressed) {
+  if (up_pressed || w_pressed) {
     // Move the cartesian observer position in the look direction by a small amount
     obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, 0.1));
     var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
     X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
-  if (down_pressed) {
+  if (down_pressed || s_pressed) {
     // Move the cartesian observer position against the look direction by a small amount
     obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, -0.1));
     var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
     X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
-  if (z_pressed) {
+  if (z_pressed || q_pressed) {
     // Move the cartesian observer position in the up direction by a small amount
     obs_pos_cart = add(obs_pos_cart, mult(updir_cart, 0.1));
     var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
     X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
-  if (x_pressed) {
+  if (x_pressed || e_pressed) {
     // Move the cartesian observer position against the up direction by a small amount
     obs_pos_cart = add(obs_pos_cart, mult(updir_cart, -0.1));
     var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
@@ -459,18 +468,6 @@ function checkInput() {
     rightbracket_pressed = false;
   }
 
-  if (q_pressed) {
-    alpha_corr = alpha_corr + 0.01;
-    lc = gl.getUniformLocation(program, "alpha_corr");
-    gl.uniform1f(lc, alpha_corr);    
-  }
-
-  if (a_pressed) {
-    alpha_corr = alpha_corr - 0.01;
-    if (alpha_corr < 0.) alpha_corr = 0.;
-    lc = gl.getUniformLocation(program, "alpha_corr");
-    gl.uniform1f(lc, alpha_corr);    
-  }
 
 }
 
@@ -488,6 +485,11 @@ function keyup(e) {
   if (e.key == '=') equals_pressed = false;
   if (e.key == 'q') q_pressed = false;
   if (e.key == 'a') a_pressed = false;
+  if (e.key == 's') s_pressed = false;
+  if (e.key == 'd') d_pressed = false;
+  if (e.key == 'e') e_pressed = false;
+  if (e.key == 'w') w_pressed = false;
+
 }
 
 function mousedown(e) {
