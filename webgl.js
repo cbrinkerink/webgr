@@ -116,7 +116,6 @@ function construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs) {
   var local_g_uu = metric_uu(X_u_obs);
   var local_g_dd = metric_dd(X_u_obs);
 
-  U_u_obs = construct_U_vector(X_u_obs);
 
   // Initialize the tetrad to all zeroes
   var e_u = [
@@ -338,106 +337,46 @@ function checkInput() {
   //console.log("Checking input state!");
   if (left_pressed) {
     X_u_obs[3] = X_u_obs[3] - 0.01;
-    k_u_obs = normalize_null(X_u_obs, k_u_obs);
-    var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
-    var tet2 = [
-                [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
-                [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
-                [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
-                [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
-               ];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "obs_pos");
-    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
-    gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
-    //requestAnimationFrame(render);
   }
   if (right_pressed) {
     X_u_obs[3] = X_u_obs[3] + 0.01;
-    k_u_obs = normalize_null(X_u_obs, k_u_obs);
-    var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
-    var tet2 = [
-                [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
-                [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
-                [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
-                [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
-               ];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "obs_pos");
-    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
-    gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
-    //requestAnimationFrame(render);
   }
   if (up_pressed) {
     X_u_obs[1] = X_u_obs[1] - 0.1;
-    k_u_obs = normalize_null(X_u_obs, k_u_obs);
-    var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
-    var tet2 = [
-                [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
-                [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
-                [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
-                [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
-               ];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "obs_pos");
-    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
-    gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
-    //requestAnimationFrame(render);
   }
   if (down_pressed) {
     X_u_obs[1] = X_u_obs[1] + 0.1;
-    k_u_obs = normalize_null(X_u_obs, k_u_obs);
-    var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
-    var tet2 = [
-                [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
-                [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
-                [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
-                [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
-               ];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "obs_pos");
-    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
-    gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
-    //requestAnimationFrame(render);
   }
   if (z_pressed) {
     X_u_obs[2] = X_u_obs[2] - 0.01;
-    k_u_obs = normalize_null(X_u_obs, k_u_obs);
-    var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
-    var tet2 = [
-                [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
-                [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
-                [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
-                [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
-               ];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "obs_pos");
-    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
-    gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
-    //requestAnimationFrame(render);
   }
   if (x_pressed) {
     X_u_obs[2] = X_u_obs[2] + 0.01;
-    k_u_obs = normalize_null(X_u_obs, k_u_obs);
-    var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
-    var tet2 = [
-                [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
-                [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
-                [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
-                [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
-               ];
-    gl.useProgram(program);
-    lc = gl.getUniformLocation(program, "obs_pos");
-    gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
-    var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
-    gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
-    //requestAnimationFrame(render);
   }
+
+  // Clamp the radial coordinate
+  if (X_u_obs[1] < 2.2) {
+      X_u_obs[1] = 2.2;
+  }
+  if (X_u_obs[1] > 99.5) {                   
+      X_u_obs[1] = 99.5;
+  }
+
+  k_u_obs = normalize_null(X_u_obs, k_u_obs);
+  U_u_obs = construct_U_vector(X_u_obs);
+  var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
+  var tet2 = [
+              [tet[0][0], tet[1][0], tet[2][0], tet[3][0]],
+              [tet[0][1], tet[1][1], tet[2][1], tet[3][1]],
+              [tet[0][2], tet[1][2], tet[2][2], tet[3][2]],
+              [tet[0][3], tet[1][3], tet[2][3], tet[3][3]]
+             ];
+  gl.useProgram(program);
+  lc = gl.getUniformLocation(program, "obs_pos");
+  gl.uniform4f(lc, X_u_obs[0], X_u_obs[1], X_u_obs[2], X_u_obs[3]);
+  var tetmatloc = gl.getUniformLocation(program, "tetrad_u");
+  gl.uniformMatrix4fv(tetmatloc, false, tet2.flat());
+
   if (leftbracket_pressed) {
     // Reduce the canvas x size
     width = document.getElementById("canvas").width;
