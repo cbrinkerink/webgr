@@ -31,10 +31,11 @@ var pointerLock = false;
 // Define observer variables:
 var lookdir_cart  = [-1., 0., 0.];
 var updir_cart    = [0., 0., 1.];
+var obs_pos_cart  = [99., 0., 0.];
 
-var X_u_obs = [0., 99., Math.PI/2., 0.];
+var X_u_obs = [0., 99., Math.PI/2., 0.]; // To add: express X_u_obs in terms of obs_pos_cart
 var U_u_obs = construct_U_vector(X_u_obs); // 4-velocity of observer
-var u_u_obs = [0., 0., -0.01, 0.];
+var u_u_obs = [0., 0., -0.01, 0.]; // To add: express u_u_obs in terms of updir_cart
 //var u_u_obs = [0., 0., -0.01, 0.]; // up direction
 var k_u_obs = [0., -1., 0., 0.]; // look direction
 //var k_u_obs = [0., 0., 0., 0.01]; // look direction
@@ -336,22 +337,40 @@ function keydown(e) {
 function checkInput() {
   //console.log("Checking input state!");
   if (left_pressed) {
-    X_u_obs[3] = X_u_obs[3] - 0.01;
+    // Move the cartesian observer position laterally left by a small amount
+    obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), 0.1));
+    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
   if (right_pressed) {
-    X_u_obs[3] = X_u_obs[3] + 0.01;
+    // Move the cartesian observer position laterally right by a small amount
+    obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), -0.1));
+    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
   if (up_pressed) {
-    X_u_obs[1] = X_u_obs[1] - 0.1;
+    // Move the cartesian observer position in the look direction by a small amount
+    obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, 0.1));
+    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
   if (down_pressed) {
-    X_u_obs[1] = X_u_obs[1] + 0.1;
+    // Move the cartesian observer position against the look direction by a small amount
+    obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, -0.1));
+    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
   if (z_pressed) {
-    X_u_obs[2] = X_u_obs[2] - 0.01;
+    // Move the cartesian observer position in the up direction by a small amount
+    obs_pos_cart = add(obs_pos_cart, mult(updir_cart, 0.1));
+    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
   if (x_pressed) {
-    X_u_obs[2] = X_u_obs[2] + 0.01;
+    // Move the cartesian observer position against the up direction by a small amount
+    obs_pos_cart = add(obs_pos_cart, mult(updir_cart, -0.1));
+    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
   }
 
   // Clamp the radial coordinate
@@ -367,7 +386,6 @@ function checkInput() {
   k_u_obs = normalize_null(X_u_obs, cart_to_sphere(lookdir_cart, X_u_obs));
   u_u_obs = cart_to_sphere(updir_cart, X_u_obs);
 
-  //k_u_obs = normalize_null(X_u_obs, k_u_obs);
   U_u_obs = construct_U_vector(X_u_obs);
   var tet = construct_tetrad_u(X_u_obs, U_u_obs, u_u_obs, k_u_obs);
   var tet2 = [
@@ -537,9 +555,9 @@ function mousemove(e) {
       // Let's use our pseudo-cartesian orientation and our mouse move vector to determine our rotation vector.
       // We then need to update our two camera vectors (lookdir, updir) according to this rotation.
       var rightdir_cart = normalize(cross(lookdir_cart, updir_cart));
-      console.log("cross(lookdir_cart, updir_cart): ", cross(lookdir_cart, updir_cart));
-      console.log("mult(updir_cart, e.movementX): ", mult(updir_cart, e.movementX));
-      console.log("mult(rightdir_cart, e.movementY): ", mult(rightdir_cart, e.movementY));
+      //console.log("cross(lookdir_cart, updir_cart): ", cross(lookdir_cart, updir_cart));
+      //console.log("mult(updir_cart, e.movementX): ", mult(updir_cart, e.movementX));
+      //console.log("mult(rightdir_cart, e.movementY): ", mult(rightdir_cart, e.movementY));
 
       // Rotate lookdir horizontally
       var lookdir_cart_r = add(mult(lookdir_cart, Math.cos(e.movementX / 100.)), mult(rightdir_cart, Math.sin(e.movementX / 100.)));
