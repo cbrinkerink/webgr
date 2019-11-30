@@ -376,9 +376,13 @@ function checkInput() {
   // Clamp the radial coordinate
   if (X_u_obs[1] < 2.2) {
       X_u_obs[1] = 2.2;
+      var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+      obs_pos_cart = mult(obs_pos_cart, 2.2/rad);
   }
   if (X_u_obs[1] > 99.5) {                   
       X_u_obs[1] = 99.5;
+      var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+      obs_pos_cart = mult(obs_pos_cart, 99.5/rad);
   }
 
   // New bits to take care of view direction consistency with movement
