@@ -885,7 +885,7 @@ function main() {
 
   var image2 = new Image(); // Load another image
   //image2.src = "simple.png";
-  image2.src = "starmap_hires.jpg";
+  image2.src = "starmap_hires2.jpg";
   //image2.src = "starmap_lores.jpg";
   image2.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
