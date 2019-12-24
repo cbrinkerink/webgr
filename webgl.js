@@ -343,44 +343,73 @@ function keydown(e) {
 
 }
 
+
+
+
+
 function checkInput() {
-  //console.log("Checking input state!");
+
+
+
+  // Update current Cartersian vectors (transform always-up-to-date spherical forms to Cart.)
+  // Is this step necessary?
+  /*
+  lookdir_cart = sphere_to_cart(k_u_obs, X_u_obs);
+  updir_cart = sphere_to_cart(u_u_obs, X_u_obs);
+
+  var r = X_u_obs[1];
+  var th = X_u_obs[2];
+  var phi = X_u_obs[3];
+  var x = r * Math.sin(th) * Math.cos(phi);
+  var y = r * Math.sin(th) * Math.sin(phi);
+  var z = r * Math.cos(th);   
+  obs_pos_cart = [x, y, z];
+  */
+
+
+
+  // Determine in which direction(s) to move	
+  var forwardback = 0.;
+  var leftright = 0.;
+  var updown = 0.;
+
+  var speedfactor = -.1;
+
   if (left_pressed || a_pressed) {
     // Move the cartesian observer position laterally left by a small amount
-    obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), 0.1));
-    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
-    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
+    leftright = -1.;  
   }
   if (right_pressed || d_pressed) {
     // Move the cartesian observer position laterally right by a small amount
-    obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), -0.1));
-    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
-    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
+    leftright = 1.;
   }
   if (up_pressed || w_pressed) {
     // Move the cartesian observer position in the look direction by a small amount
-    obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, 0.1));
-    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
-    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
+    forwardback = -1.;
   }
   if (down_pressed || s_pressed) {
     // Move the cartesian observer position against the look direction by a small amount
-    obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, -0.1));
-    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
-    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
+    forwardback = 1.;
   }
   if (z_pressed || q_pressed) {
     // Move the cartesian observer position in the up direction by a small amount
-    obs_pos_cart = add(obs_pos_cart, mult(updir_cart, 0.1));
-    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
-    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
+    updown = 1.;
   }
   if (x_pressed || e_pressed) {
     // Move the cartesian observer position against the up direction by a small amount
-    obs_pos_cart = add(obs_pos_cart, mult(updir_cart, -0.1));
-    var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
-    X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
+    updown = -1.;
   }
+
+  // Update observer variables:
+  // Leftright
+  obs_pos_cart = add(obs_pos_cart, mult(normalize(cross(updir_cart, lookdir_cart)), leftright * speedfactor));
+  // Forwardback
+  obs_pos_cart = add(obs_pos_cart, mult(lookdir_cart, forwardback * speedfactor));
+  // Updown
+  obs_pos_cart = add(obs_pos_cart, mult(updir_cart, updown * speedfactor));
+
+  var rad = Math.sqrt(obs_pos_cart[0] * obs_pos_cart[0] + obs_pos_cart[1] * obs_pos_cart[1] + obs_pos_cart[2] * obs_pos_cart[2]);
+  X_u_obs = [0., rad, Math.acos(obs_pos_cart[2] / rad), Math.atan2(obs_pos_cart[1],obs_pos_cart[0]) ];
 
   // Clamp the radial coordinate
   if (X_u_obs[1] < 2.2) {
@@ -395,7 +424,6 @@ function checkInput() {
   }
 
   // New bits to take care of view direction consistency with movement
-  k_u_obs = cart_to_sphere(lookdir_cart, X_u_obs);
   k_u_obs = normalize_null(X_u_obs, cart_to_sphere(lookdir_cart, X_u_obs));
   u_u_obs = cart_to_sphere(updir_cart, X_u_obs);
 
@@ -536,7 +564,7 @@ function add (v1, v2) {
 }
 
 // Transform a pseudo-cartesian vector to spherical coordinates, using the observer position.
-function cart_to_sphere(cv, obspos) {
+function cart_to_sphere2(cv, obspos) {
   // Construct basis vector for radial direction in cartesian coordinates
   var rdir = [Math.cos(obspos[3]) * Math.sin(obspos[2]), 
               Math.sin(obspos[3]) * Math.sin(obspos[2]),
@@ -551,6 +579,45 @@ function cart_to_sphere(cv, obspos) {
   //console.log("phidir = ",phidir);
   var res = [0., inprod(cv, rdir), inprod(cv, thetadir)/obspos[1], inprod(cv, phidir)/obspos[1]];
   return res;
+}
+
+// Transform a pseudo-cartesian vector to spherical coordinates, using the observer position.
+function cart_to_sphere(cv, obspos) {
+  var dx = cv[0];
+  var dy = cv[1];
+  var dz = cv[2];
+  var r = obspos[1];
+  var th = obspos[2];
+  var phi = obspos[3];
+  var x = r * Math.sin(th) * Math.cos(phi);
+  var y = r * Math.sin(th) * Math.sin(phi);
+  var z = r * Math.cos(th);   
+
+  var dr = dx * Math.cos(phi) * Math.sin(th) + 
+           dy * Math.sin(phi) * Math.sin(th) +
+           dz * Math.cos(th);
+
+  var dphi = (dy * Math.cos(phi) - dx * Math.sin(phi)) / Math.sqrt(x * x + y * y);
+
+  var dth = dx * Math.cos(th) * Math.cos(phi) / Math.sqrt(x * x + y * y + z * z) +
+            dy * Math.cos(th) * Math.sin(phi) / Math.sqrt(x * x + y * y + z * z) -
+            dz * Math.sin(th) / Math.sqrt(x * x + y * y + z * z);
+
+  var res = [0., dr, dth, dphi];
+  return res;
+}
+
+// Transform a vector in spherical coordinates to one in Cartesian coords using observer position
+function sphere_to_cart(sv_u, obspos_u){
+   var r = obspos_u[1];
+   var th = obspos_u[2];
+   var phi = obspos_u[3];
+   var dz = Math.cos(th) * sv_u[1] - r * Math.sin(th) * sv_u[2];
+   var dy = Math.sin(th) * Math.sin(phi) * sv_u[1] + r * Math.cos(th) * Math.sin(phi) * sv_u[2] + r * Math.sin(th) * Math.cos(phi) * sv_u[3];
+   var dx = Math.sin(th) * Math.cos(phi) * sv_u[1] + r * Math.cos(th) * Math.cos(phi) * sv_u[2] - r * Math.sin(th) * Math.sin(phi) * sv_u[3];
+
+   var res = [dx, dy, dz];
+   return res;
 }
 
 function mousemove(e) {
@@ -594,8 +661,6 @@ function mousemove(e) {
       }
       */
 
-      //console.log("rotated lookdir: ", lookdir_cart_r);
-      //console.log("rotated updir: ", updir_cart_r);
       // We can now update our k_u_obs vector and u_u_obs vector with these two.
       // NOTE: we have to take care because the world direction of k_u_obs depends on what X_u_obs is.
       // So, we need to capture the relation between the rotated cartesian directions and our observer position
