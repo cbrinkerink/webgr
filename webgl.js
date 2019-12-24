@@ -40,9 +40,7 @@ var obs_pos_cart  = [99., 0., 0.];
 var X_u_obs = [0., 99., Math.PI/2., 0.]; // To add: express X_u_obs in terms of obs_pos_cart
 var U_u_obs = construct_U_vector(X_u_obs); // 4-velocity of observer
 var u_u_obs = [0., 0., -0.01, 0.]; // To add: express u_u_obs in terms of updir_cart
-//var u_u_obs = [0., 0., -0.01, 0.]; // up direction
 var k_u_obs = [0., -1., 0., 0.]; // look direction
-//var k_u_obs = [0., 0., 0., 0.01]; // look direction
 k_u_obs = normalize_null(X_u_obs, k_u_obs);
 
 var levciv = make_levciv();
@@ -86,10 +84,6 @@ function makecamvecs(xpix, ypix, fovx, fovy) {
       var ux = alpha / norm;
       var uy = beta / norm;
       var uz = plane_dist / norm;
-      //cv[i][j][0] = 1.;
-      //cv[i][j][1] = ux;
-      //cv[i][j][2] = uy;
-      //cv[i][j][3] = uz;
       cv[(i + j * xpix) * 4 + 0] = 1.;
       cv[(i + j * xpix) * 4 + 1] = ux;
       cv[(i + j * xpix) * 4 + 2] = uy;
@@ -262,12 +256,6 @@ function metric_dd(X_u) {
   return g_dd;
 }
 
-// This function orthogonalizes v2 to v1 (v1 is left unmodified).
-//function make_orthogonal(X_u_obs, v1_u, v2_u) {
-//  var local_g_dd = metric_dd(X_u_obs);
-//  var sub = inner_product(X_u_obs, v1_u, v2_u)
-//}
-
 function InitializeShader(gl, source_vs, source_frag)
 {
     var shader_vs = gl.createShader(gl.VERTEX_SHADER);
@@ -344,29 +332,7 @@ function keydown(e) {
 }
 
 
-
-
-
 function checkInput() {
-
-
-
-  // Update current Cartersian vectors (transform always-up-to-date spherical forms to Cart.)
-  // Is this step necessary?
-  /*
-  lookdir_cart = sphere_to_cart(k_u_obs, X_u_obs);
-  updir_cart = sphere_to_cart(u_u_obs, X_u_obs);
-
-  var r = X_u_obs[1];
-  var th = X_u_obs[2];
-  var phi = X_u_obs[3];
-  var x = r * Math.sin(th) * Math.cos(phi);
-  var y = r * Math.sin(th) * Math.sin(phi);
-  var z = r * Math.cos(th);   
-  obs_pos_cart = [x, y, z];
-  */
-
-
 
   // Determine in which direction(s) to move	
   var forwardback = 0.;
@@ -564,24 +530,6 @@ function add (v1, v2) {
 }
 
 // Transform a pseudo-cartesian vector to spherical coordinates, using the observer position.
-function cart_to_sphere2(cv, obspos) {
-  // Construct basis vector for radial direction in cartesian coordinates
-  var rdir = [Math.cos(obspos[3]) * Math.sin(obspos[2]), 
-              Math.sin(obspos[3]) * Math.sin(obspos[2]),
-              Math.cos(obspos[2])];
-  //console.log("rdir = ",rdir);
-  // Construct basis vector for theta direction in cartesian coordinates
-  var thetadir = [Math.cos(obspos[3]) * Math.cos(obspos[2]), 
-                  Math.sin(obspos[3]) * Math.cos(obspos[2]),
-                  -Math.sin(obspos[2])];
-  //console.log("thetadir = ",thetadir);
-  var phidir = [-Math.sin(obspos[3]), Math.cos(obspos[3]) ,0.];
-  //console.log("phidir = ",phidir);
-  var res = [0., inprod(cv, rdir), inprod(cv, thetadir)/obspos[1], inprod(cv, phidir)/obspos[1]];
-  return res;
-}
-
-// Transform a pseudo-cartesian vector to spherical coordinates, using the observer position.
 function cart_to_sphere(cv, obspos) {
   var dx = cv[0];
   var dy = cv[1];
@@ -624,13 +572,9 @@ function mousemove(e) {
   // Down and to the right is positive
   if (pointerLock) {
     if (e.movementX != 0 || e.movementY != 0) {
-      //console.log("X: ", e.movementX, ", Y: ", e.movementY);
       // Let's use our pseudo-cartesian orientation and our mouse move vector to determine our rotation vector.
       // We then need to update our two camera vectors (lookdir, updir) according to this rotation.
       var rightdir_cart = normalize(cross(lookdir_cart, updir_cart));
-      //console.log("cross(lookdir_cart, updir_cart): ", cross(lookdir_cart, updir_cart));
-      //console.log("mult(updir_cart, e.movementX): ", mult(updir_cart, e.movementX));
-      //console.log("mult(rightdir_cart, e.movementY): ", mult(rightdir_cart, e.movementY));
 
       // Rotate lookdir horizontally
       var lookdir_cart_r = add(mult(lookdir_cart, Math.cos(e.movementX / 100.)), mult(rightdir_cart, Math.sin(e.movementX / 100.)));
@@ -666,9 +610,7 @@ function mousemove(e) {
       // So, we need to capture the relation between the rotated cartesian directions and our observer position
       // to effectively calculate k_u_obs and u_u_obs.
       k_u_obs = cart_to_sphere(lookdir_cart_r, X_u_obs);
-      //console.log("New k_u_obs: ", k_u_obs);
       k_u_obs = normalize_null(X_u_obs, cart_to_sphere(lookdir_cart_r, X_u_obs));
-      //console.log("New k_u_obs: ", k_u_obs);
       u_u_obs = cart_to_sphere(updir_cart_r, X_u_obs);
 
       // Refresh cartesian look/up vectors with rotated ones
