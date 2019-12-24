@@ -149,6 +149,14 @@ void main() {
   vec3 camvec_cartesian_rotated = camvec_cartesian * cos(-deflectionangle) + normalize(cross(ip,camvec_cartesian)) * sin(-deflectionangle) + ip * dot(ip, camvec_cartesian) * (1. - cos(-deflectionangle));
   //vec3 camvec_cartesian_rotated = camvec_cartesian;
 
+  //vec3 pointdir = vec3(-1., 0., 0.);
+  //float angle = acos(dot(camvec_cartesian_rotated, pointdir));
+  //float br = exp(-angle * angle * 1000.);
+  //fragColor = vec4(br, br, br, 1.0);;
+
+  
+  
+
   float xtex = (atan(camvec_cartesian_rotated.y, camvec_cartesian_rotated.x) + PI) / (2. * PI); // so that the coordinate runs from 0 to 1
   float ytex = acos(camvec_cartesian_rotated.z)/PI; // so that this also runs from 0 to 1
 
@@ -169,6 +177,11 @@ void main() {
 
   // Debug stuff goes here
   //fragColor = vec4(mod(camvec_cartesian.x, 0.1) * 10., mod(camvec_cartesian.y, 0.1) * 10., mod(camvec_cartesian.z,0.1) * 10., 1.0);
+
+
+
+  
+
 }
 </script>
 
