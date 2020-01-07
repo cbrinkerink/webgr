@@ -128,21 +128,36 @@ float alphamax = PI;
 void main() {
   vec2 pos = vec2(1., resolution.y/resolution.x) * 2. * (gl_FragCoord.xy / resolution.xy - 0.5); // goes from -1 to 1 in X, and proportionally in Y according to viewport geometry.
   vec4 camvec = vec4(0., pos.y, -pos.x, 1.); // Set up the look direction for this pixel, in camera/tetrad space
-  //camvec.z = camvec.z / sin(obs_pos.z); // This re-scaling is apparently needed to keep the field of view constant for varying observer theta position coordinates - but it is a workaround! We should figure out why this is the case.
   camvec = normalize(camvec);
-  camvec.x = 1.; // set time component of look direction to 1 for future-proofing
+  camvec = normt(camvec); // set time component of look direction...
+  camvec.x = -camvec.x; // ... and negate it :p
   camvec = tetrad_u * camvec; // Convert look direction to world spherical coordinates using our tetrad
+  // Camvec behaves fine (tested by displaying its components as fragColor). The reason for the black blobs showing up must be somewhere else...
   vec3 camvec_cartesian = convert_lookdir_to_cartesian(camvec, obs_pos);
   vec3 obspos_cartesian = convert_position_to_cartesian(obs_pos);
   float alpha = acos(dot(camvec_cartesian, obspos_cartesian)); // Calculate look angle w.r.t. center of BH
+  // alpha seems fine as well...
   vec3 ip = normalize(cross(camvec_cartesian, obspos_cartesian)); // Calculate cartesian vector around which to rotate our view vector
   float r = obs_pos.y; // get the radial coordinate of the observer
 
   float rfrac = (r - rmin)/(rmax-rmin); // calculate fractional r-value for deflection angle texture lookup
-  float alphafrac = (alpha -alphamin)/(alphamax - alphamin); // calculate fractional alpha value for deflection angle texture lookup
+  float alphafrac = (alpha - alphamin)/(alphamax - alphamin); // calculate fractional alpha value for deflection angle texture lookup
+
+  float deflectionangle = texture(u_texture_deflection, vec2(alphafrac, rfrac)).x; // New way where we use a floating-point texture directly
+
+
+  /************
   vec4 tc = texture(u_texture_deflection, vec2(rfrac, alphafrac)); // Get RGBA from deflection angle texture map
   //vec4 tc = texture(u_texture_background, vec2(xtex, ytex));
-  float deflectionangle = datamin + tc.x * (datamax - datamin) + tc.y * (datamax - datamin)/255. + tc.z * (datamax - datamin)/(255.*255.) + tc.w * (datamax - datamin)/(255.*255.*255.); // Convert the RGBA components into a float value using our mapping rule defined earlier
+
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // Deflectionangle is the culprit! We see a weird pattern close to the center of our view, and this gets more pronounced when we reduce the lateral screen size.
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  float deflectionangle = datamin + tc.x * (datamax - datamin) + tc.y * (datamax - datamin)/256. + tc.z * (datamax - datamin)/(256.*256.) + tc.w * (datamax - datamin)/(256.*256.*256.); // Convert the RGBA components into a float value using our mapping rule defined earlier
+  ***********/
+
+
   deflectionangle = deflectionangle * alpha_corr - alpha;
 
   // Now we have the deflection angle and the vector to rotate our camvec around.
@@ -154,8 +169,9 @@ void main() {
   //float br = exp(-angle * angle * 1000.);
   //fragColor = vec4(br, br, br, 1.0);;
 
+  if (deflectionangle < 0. && alpha < PI/20.) deflectionangle = 0.;
   
-  
+  //fragColor = vec4(0., deflectionangle, 0., 1.);  
 
   float xtex = (atan(camvec_cartesian_rotated.y, camvec_cartesian_rotated.x) + PI) / (2. * PI); // so that the coordinate runs from 0 to 1
   float ytex = acos(camvec_cartesian_rotated.z)/PI; // so that this also runs from 0 to 1
@@ -172,12 +188,13 @@ void main() {
 
   if (deflectionangle < -0.1) fragColor = vec4(0., 0., 0., 1.);
   else fragColor = col;
-  //else fragColor = vec4(0.5 + 0.5 * camvec_cartesian.z, 0., 0., 1.);
-  //else fragColor = vec4(10. * mod(xtex,0.1), ytex, 0., 1.);
+
+  //fragColor = vec4(20. * mod(deflectionangle, 0.05), 20. * mod(deflectionangle,0.05), 20. * mod(deflectionangle,0.05), 1.);
 
   // Debug stuff goes here
   //fragColor = vec4(mod(camvec_cartesian.x, 0.1) * 10., mod(camvec_cartesian.y, 0.1) * 10., mod(camvec_cartesian.z,0.1) * 10., 1.0);
 
+  
 
 
   

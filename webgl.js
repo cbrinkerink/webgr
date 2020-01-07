@@ -35,9 +35,9 @@ var pointerLock = false;
 // Define observer variables:
 var lookdir_cart  = [-1., 0., 0.];
 var updir_cart    = [0., 0., 1.];
-var obs_pos_cart  = [99., 0., 0.];
+var obs_pos_cart  = [30., 0., 0.];
 
-var X_u_obs = [0., 99., Math.PI/2., 0.]; // To add: express X_u_obs in terms of obs_pos_cart
+var X_u_obs = [0., 30., Math.PI/2., 0.]; // To add: express X_u_obs in terms of obs_pos_cart
 var U_u_obs = construct_U_vector(X_u_obs); // 4-velocity of observer
 var u_u_obs = [0., 0., -0.01, 0.]; // To add: express u_u_obs in terms of updir_cart
 var k_u_obs = [0., -1., 0., 0.]; // look direction
@@ -446,7 +446,7 @@ function checkInput() {
       gl.uniform2f(lc, width, height);
       gl.viewport(0, 0, width, height);
     }
-    leftbracket_pressed = false;
+    minus_pressed = false;
   }
 
   if (equals_pressed) {
@@ -459,7 +459,7 @@ function checkInput() {
     lc = gl.getUniformLocation(program, "resolution");
     gl.uniform2f(lc, width, height);
     gl.viewport(0, 0, width, height);
-    rightbracket_pressed = false;
+    equals_pressed = false;
   }
 
 
@@ -849,14 +849,48 @@ function main() {
   var texture1 = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture1);
-   
-  // Fill the texture with a 1x1 blue pixel.
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-                new Uint8Array([0, 0, 255, 255]));
-   
+
+  // Fill the texture with a 1x1 pixel.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0.])); // Prepare a float32 texture
+  //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255])); // This is the old byte texture
+
+
+  // Load binary data
+  console.log("Attempting to load our deflection angle data from binary file...");
+  var oReq = new XMLHttpRequest();
+  oReq.open("GET", "/webgr/bin-test.dat", true);
+  oReq.responseType = "arraybuffer";
+  
+  var deflectionArray;
+
+  // When we get the binary data, we can finally upload it to the GPU as a floating-point texture.
+  oReq.onload = function (oEvent) {
+    var arrayBuffer = oReq.response; // Note: not oReq.responseText
+    if (arrayBuffer) {
+      console.log("Got the binary data!");
+      deflectionArray = new Float32Array(arrayBuffer);
+      // Load the image to the GPU here
+      
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture1);
+      
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 2048, 2048, 0, gl.RED, gl.FLOAT, deflectionArray); // Prepare a float32 texture
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+  };
+  
+  oReq.send(null);
+  console.log("Sent the XMLHTTPrequest to get the binary data.");
+
+
+  /******* This section is obsolete because we now use a floating-point texture generated from binary data.	
+
   // Asynchronously load an image
   var image1 = new Image();
-  image1.src = "deflectionmap_2048.png";
+  image1.src = "deflectionmap_2048_2.png";
   image1.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
     gl.activeTexture(gl.TEXTURE0);
@@ -865,6 +899,8 @@ function main() {
     gl.generateMipmap(gl.TEXTURE_2D);
     //gl.bindTexture(gl.TEXTURE_2D, null);
   });
+
+  *********/
 
   // Create a second texture.
   var texture2 = gl.createTexture();
