@@ -33,11 +33,11 @@ var a_pressed = false;
 var pointerLock = false;
 
 // Define observer variables:
-var lookdir_cart  = [-1., 0., 0.];
+var lookdir_cart  = [1., 0., 0.];
 var updir_cart    = [0., 0., 1.];
-var obs_pos_cart  = [30., 0., 0.];
+var obs_pos_cart  = [-30., 0., 0.];
 
-var X_u_obs = [0., 30., Math.PI/2., 0.]; // To add: express X_u_obs in terms of obs_pos_cart
+var X_u_obs = [0., 30., Math.PI/2., Math.PI]; // To add: express X_u_obs in terms of obs_pos_cart
 var U_u_obs = construct_U_vector(X_u_obs); // 4-velocity of observer
 var u_u_obs = [0., 0., -0.01, 0.]; // To add: express u_u_obs in terms of updir_cart
 var k_u_obs = [0., -1., 0., 0.]; // look direction
@@ -858,7 +858,7 @@ function main() {
   // Load binary data
   console.log("Attempting to load our deflection angle data from binary file...");
   var oReq = new XMLHttpRequest();
-  oReq.open("GET", "/webgr/bin-test.dat", true);
+  oReq.open("GET", "http://astro.ru.nl/~cbrinker/webgr/bin-test.dat", true);
   oReq.responseType = "arraybuffer";
   
   var deflectionArray;
@@ -922,7 +922,7 @@ function main() {
   var image2 = new Image(); // Load another image
   //image2.src = "simple.png";
   //image2.src = "starmap_hires2.jpg";
-  image2.src = "gaia-4000x2000.png";
+  image2.src = "Gaia-4000x2000.png";
   //image2.src = "starmap_lores.jpg";
   image2.addEventListener('load', function() {
     // Now that the image has loaded make copy it to the texture.
