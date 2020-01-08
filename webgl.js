@@ -858,7 +858,8 @@ function main() {
   // Load binary data
   console.log("Attempting to load our deflection angle data from binary file...");
   var oReq = new XMLHttpRequest();
-  oReq.open("GET", "http://astro.ru.nl/~cbrinker/webgr/bin-test.dat", true);
+  //oReq.open("GET", "https://astro.ru.nl/~cbrinker/webgr/bin-test.dat", true);
+  oReq.open("GET", "/~cbrinker/webgr/bin-test.dat", true);
   oReq.responseType = "arraybuffer";
   
   var deflectionArray;
