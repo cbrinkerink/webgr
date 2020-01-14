@@ -489,8 +489,8 @@ function keyup(e) {
 function mousedown(e) {
   console.log("Mouse clicked!");
   if (!pointerLock) {
-    canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
-    canvas.requestPointerLock();
+    textcanvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+    textcanvas.requestPointerLock();
     console.log("Pointer locked!");
     pointerLock = true;
   } else {
@@ -504,14 +504,14 @@ function mousedown(e) {
 
 function touchStart(e) {
   // For testing, generate a keydown event here so we can move forward when the user touches the canvas.
-  canvas.dispatchEvent(new KeyboardEvent('keydown',{'keyCode': '38'}));
+  document.body.dispatchEvent(new KeyboardEvent('keydown',{'keyCode': '38'}));
   up_pressed = true;
   document.getElementById("titletext").innerHTML = "Touch event detected!";
 }
 
 function touchEnd(e) {
   // For testing, generate a keydown event here so we can move forward when the user touches the canvas.
-  canvas.dispatchEvent(new KeyboardEvent('keyup',{'keyCode': '38'}));
+  document.body.dispatchEvent(new KeyboardEvent('keyup',{'keyCode': '38'}));
   up_pressed = false;
   document.getElementById("titletext").innerHTML = "Touch event stopped!";
 }
@@ -821,8 +821,8 @@ function main() {
   document.body.addEventListener("keydown", keydown, false);
   document.body.addEventListener("keyup", keyup, false);
 
-  document.body.addEventListener("mousedown", mousedown, false);
-  document.body.addEventListener("mousemove", mousemove, false);
+  textcanvas.addEventListener("mousedown", mousedown, false);
+  textcanvas.addEventListener("mousemove", mousemove, false);
 
   // Experimental: implementing touch controls for mobile devices
   document.body.addEventListener('touchstart', touchStart, false);
@@ -877,7 +877,7 @@ function main() {
   // Load binary data
   console.log("Attempting to load our deflection angle data from binary file...");
   var oReq = new XMLHttpRequest();
-  //oReq.open("GET", "https://astro.ru.nl/~cbrinker/webgr/bin-test.dat", true);
+  //oReq.open("GET", "/webgr/bin-test.dat", true);
   oReq.open("GET", "/~cbrinker/webgr/bin-test.dat", true);
   oReq.responseType = "arraybuffer";
   
@@ -1016,6 +1016,46 @@ function main() {
   var scale = [1, 1];
 
   drawScene();
+
+  // Segment where we add a function to read in a local file from the user's system as a background map.
+  var fileInput = document.getElementById("fileInput");
+  fileInput.addEventListener('change', function(e) {
+    var file = fileInput.files[0];
+    var imageType = /image.*/;
+
+    if (file.type.match(imageType)) {
+      var reader = new FileReader();
+
+      reader.onload = function(e) {
+	console.log("A file was selectd!");
+
+      	//var img = new Image();
+      	//img.src = reader.result;
+
+	// Do something with the image here
+        image2 = new Image(); // Load another image
+        image2.src = reader.result;
+
+        image2.addEventListener('load', function() {
+          // Now that the image has loaded make copy it to the texture.
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, texture2);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
+          gl.generateMipmap(gl.TEXTURE_2D);
+          //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+          //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+          gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT );
+          //gl.bindTexture(gl.TEXTURE_2D, null);
+        });
+      }
+
+      reader.readAsDataURL(file);
+    } else {
+      console.log("File type not supported!");
+    }
+  });
 
   then = Date.now();
   requestAnimationFrame(render);
