@@ -502,6 +502,20 @@ function mousedown(e) {
   }
 }
 
+function touchStart(e) {
+  // For testing, generate a keydown event here so we can move forward when the user touches the canvas.
+  canvas.dispatchEvent(new KeyboardEvent('keydown',{'keyCode': '38'}));
+  up_pressed = true;
+  document.getElementById("titletext").innerHTML = "Touch event detected!";
+}
+
+function touchEnd(e) {
+  // For testing, generate a keydown event here so we can move forward when the user touches the canvas.
+  canvas.dispatchEvent(new KeyboardEvent('keyup',{'keyCode': '38'}));
+  up_pressed = false;
+  document.getElementById("titletext").innerHTML = "Touch event stopped!";
+}
+
 // Calculate cross product of 2 3D cartesian vectors.
 function cross(v1, v2) {
   var vout = [v1[1] * v2[2] - v1[2] * v2[1], v1[2] * v2[0] - v1[0] * v2[2], v1[0] * v2[1] - v1[1] * v2[0]];
@@ -809,6 +823,11 @@ function main() {
 
   document.body.addEventListener("mousedown", mousedown, false);
   document.body.addEventListener("mousemove", mousemove, false);
+
+  // Experimental: implementing touch controls for mobile devices
+  document.body.addEventListener('touchstart', touchStart, false);
+  //document.body.addEventListener('touchmove', touchMove, false);
+  document.body.addEventListener('touchend', touchEnd, false);
 
   // Get A WebGL context
   gl = canvas.getContext("webgl2");
