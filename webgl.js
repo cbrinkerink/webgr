@@ -29,6 +29,7 @@ var e_pressed = false;
 var s_pressed = false;
 var d_pressed = false;
 var a_pressed = false;
+var r_pressed = false;
 
 var pointerLock = false;
 
@@ -328,6 +329,7 @@ function keydown(e) {
   if (e.key == 's') s_pressed = true;
   if (e.key == 'd') d_pressed = true;
   if (e.key == 'e') e_pressed = true;
+  if (e.key == 'r') r_pressed = true;
 
 }
 
@@ -364,6 +366,26 @@ function checkInput() {
   if (x_pressed || e_pressed) {
     // Move the cartesian observer position against the up direction by a small amount
     updown = -1.;
+  }
+
+  if (r_pressed) {
+    // Reload our original background image here
+    r_pressed = false;
+    var texture2 = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, texture2);
+    var image2 = new Image(); // Load another image
+    image2.src = "Gaia-4000x2000.png";
+    image2.addEventListener('load', function() {
+      // Now that the image has loaded make copy it to the texture.
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, texture2);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+      gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT );
+    });
   }
 
   // Update observer variables:
@@ -483,6 +505,7 @@ function keyup(e) {
   if (e.key == 'd') d_pressed = false;
   if (e.key == 'e') e_pressed = false;
   if (e.key == 'w') w_pressed = false;
+  if (e.key == 'r') r_pressed = false;
 
 }
 
