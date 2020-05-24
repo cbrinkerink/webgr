@@ -1,0 +1,174 @@
+<html>
+<title>Deflection angle calculation</title>
+<head>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<h1>Deflection angle calculation</h1>
+<div id="link"></div>
+<div class="container">
+<canvas id="canvas2" width="2048" height="2048"></canvas>
+</div>
+<div class="container">
+<canvas id="canvas" width="2048" height="2048"></canvas>
+</div>
+
+<!-- vertex shader -->
+<script id="2d-vertex-shader" type="x-shader/x-vertex">#version 300 es
+
+in vec2 a_position;
+in vec4 a_color;
+in vec2 a_texcoord;
+
+uniform mat3 u_matrix;
+
+out vec4 v_color;
+out vec2 v_texcoord;
+
+void main() {
+  // Multiply the position by the matrix.
+  gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+
+  // Copy the color from the attribute to the varying.
+  v_color = a_color;
+}
+</script>
+
+<script id="2d-fragment-shader" type="x-shader/x-fragment">#version 300 es
+precision mediump float;
+precision mediump int;
+
+#define PI 3.1415926536
+
+uniform vec2 resolution;
+
+out vec4 fragColor;
+
+uniform sampler2D criticalalphas;
+
+void main() {
+  vec2 pos = gl_FragCoord.xy / resolution.xy;
+  fragColor = vec4(pos.x, 1.0, pos.y, 1.0);
+}
+</script>
+
+<script id="2d-vertex-calc" type="x-shader/x-vertex">#version 300 es
+
+in vec2 a_position;
+in vec4 a_color;
+in vec2 a_texcoord;
+
+out vec2 v_texcoord;
+
+uniform mat3 u_matrix;
+
+out vec4 v_color;
+
+void main() {
+  // Multiply the position by the matrix.
+  gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+
+  // Copy the color from the attribute to the varying.
+  v_color = a_color;
+  v_texcoord = a_texcoord;
+}
+</script>
+
+<script id="2d-vis-calc" type="x-shader/x-fragment">#version 300 es
+precision mediump float;
+precision mediump int;
+
+#define PI 3.1415926536
+
+uniform vec2 resolution;
+
+in vec2 v_texcoord;
+uniform sampler2D criticalalphas;
+uniform sampler2D deflections;
+out vec4 fragColor;
+
+float fd2rdt2(float m, float r, float drdt, float dthdt) {
+  return 2. * m / (r * (r - 2. * m)) * drdt * drdt + (r - 3. * m) * dthdt * dthdt;
+}
+
+float fd2thdt2(float m, float r, float drdt, float dthdt) {
+  return -2. * (r - 3. * m) / (r * (r - 2. * m)) * drdt * dthdt;
+}
+
+float calcdeflection(float dist, float alpha, inout float onBH, inout float inBH) {
+  float xi = -dist;
+  float yi = 0.;
+  float m = 1.;
+  float dt = 0.02;
+  int done = 0;
+  inBH = 0.;
+  float ri, r = sqrt(xi * xi + yi * yi);
+  //float thi, th = atan(yi, xi) - PI/2.;
+  float thi, th = 0.;
+  t = 0.;
+  float drdti, drdt = 0.5 * cos(alpha);
+  float dthdti, dthdt = 0.5 * sin(alpha) / r;
+  float d2rdt2 = 0.;
+  float d2thdt2 = 0.;
+  float d2rdt2n = 0.;
+  float d2thdt2n = 0.;
+  float deflection = 0.;
+  while (done == 0 && t < 1000.) {
+    dt = 0.02;
+    if (r < 2.5) {
+      dt = 0.02 * 2. * (r - 1.99);
+    }
+    if (abs(drdt) > 1. || abs(r * dthdt) > 1.) {
+      float div = max(abs(drdt), abs(r * dthdt));
+      drdt = drdt / div;
+      dthdt = dthdt / div;
+    }
+    // Leapfrog integration
+    d2rdt2  = fd2rdt2(m, r, drdt, dthdt);
+    d2thdt2 = fd2thdt2(m, r, drdt, dthdt);
+
+    r  = r  + drdt  * dt + 0.5 * d2rdt2  * dt * dt;
+    th = th + dthdt * dt + 0.5 * d2thdt2 * dt * dt;
+
+    d2rdt2n  = fd2rdt2(m, r, drdt, dthdt);
+    d2thdt2n = fd2thdt2(m, r, drdt, dthdt);
+
+    drdt  = drdt  + 0.5 * (d2rdt2  + d2rdt2n)  * dt;
+    dthdt = dthdt + 0.5 * (d2thdt2 + d2thdt2n) * dt;
+
+    t = t + dt;
+    // Ray escapes the domain
+    if (drdt > 0. && r > 100.) done = 1;
+
+    // Ray gets to horizon (or close enough)
+    if (drdt < 0. && r < 2.001) {
+      done = 1;
+      inBH = 1.;
+      onBH = th;
+    }
+  }
+  //deflection = atan(ri * dthdti, drdti) + thi - atan(r * dthdt, drdt) - th;
+  deflection = atan(r * dthdt, drdt) + th - alpha;
+  if (t > 1000.) inBH = 1.;
+  if (inBH > 0.) deflection = -1.;
+  return deflection;
+}
+
+void main() {
+  // NOTE: gl_FragCoord has x and y positions in pixel coordinates, but with 0.5 offset in both x and y. Top left is thus (0.5, 0.5).
+  vec2 loc = gl_FragCoord.xy / resolution.xy;
+
+  vec4 col = texture(criticalalphas, loc);
+
+  float onBH = 0.;
+  float inBH = 0.;
+  float radius = 2.001 + (100. - 2.001) * (gl_FragCoord.y - 0.5) / (resolution.y - 1.); // linear in R
+  //float radius = 2.001 + exp(((gl_FragCoord.y - 0.5) - (resolution.y - 1.)) / 409.6) * (100. - 2.001); // logarithmic in R
+  float angle = (gl_FragCoord.x - 0.5) / (resolution.x - 1.) * PI;
+  float deflection = calcdeflection(radius, angle, onBH, inBH);
+  if (deflection > -1.) deflection = deflection + angle;
+  fragColor = vec4(radius, angle, deflection, inBH);
+}
+</script>
+<script src="webgl.js"></script>
+</body>
+</html>

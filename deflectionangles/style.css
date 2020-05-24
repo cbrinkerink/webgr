@@ -1,0 +1,91 @@
+.container {
+    position: relative;
+}
+
+.button {
+  background-color: #4CAF50; /* Green */
+  border: none;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+}
+ 
+#textcanvas {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#wrapper {
+    float: left;
+    font: 20px arial, sans-serif;
+}
+
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table.comptable {table-layout:fixed; width:1200px;}/*Setting the table width is important!*/
+table.comptable td {overflow:hidden;}/*Hide text outside the cell.*/
+table.comptable td:nth-of-type(1) {width:150px;}/*Setting the width of column 1.*/
+table.comptable td:nth-of-type(2) {width:150px;}/*Setting the width of column 2.*/
+table.comptable td:nth-of-type(3) {width:150px;}/*Setting the width of column 3.*/
+table.comptable td:nth-of-type(4) {width:150px;}/*Setting the width of column 4.*/
+table.comptable td:nth-of-type(5) {width:150px;}/*Setting the width of column 5.*/
+table.comptable td:nth-of-type(6) {width:150px;}/*Setting the width of column 6.*/
+table.comptable td:nth-of-type(7) {width:150px;}/*Setting the width of column 7.*/
+table.comptable td:nth-of-type(8) {width:150px;}/*Setting the width of column 8.*/
+
+table.vistable {table-layout:fixed; width:1200px;}/*Setting the table width is important!*/
+table.vistable td {overflow:hidden;}/*Hide text outside the cell.*/
+table.vistable td:nth-of-type(1) {width:120px;}/*Setting the width of column 1.*/
+table.vistable td:nth-of-type(2) {width:120px;}/*Setting the width of column 2.*/
+table.vistable td:nth-of-type(3) {width:120px;}/*Setting the width of column 3.*/
+table.vistable td:nth-of-type(4) {width:120px;}/*Setting the width of column 4.*/
+table.vistable td:nth-of-type(5) {width:120px;}/*Setting the width of column 5.*/
+table.vistable td:nth-of-type(6) {width:120px;}/*Setting the width of column 6.*/
+table.vistable td:nth-of-type(7) {width:480px;}/*Setting the width of column 7.*/
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+
+/* Style the button that is used to open and close the collapsible content */
+.collapsible {
+  background-color: #eee;
+  color: #444;
+  cursor: pointer;
+  padding: 18px;
+  width: 1200px;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+}
+
+/* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+.active, .collapsible:hover {
+  background-color: #ccc;
+}
+
+/* Style the collapsible content. Note: hidden by default */
+.content {
+  padding: 0px;
+  display: none;
+  overflow: hidden;
+  background-color: #f1f1f1;
+  float: left;
+  font: 20px arial, sans-serif;
+}
