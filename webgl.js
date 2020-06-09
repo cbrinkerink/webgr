@@ -900,7 +900,11 @@ function main() {
   console.log("Attempting to load our deflection angle data from binary file...");
   var oReq = new XMLHttpRequest();
   //oReq.open("GET", "/webgr/bin-test.dat", true);
-  oReq.open("GET", "/webgr/bin-test.dat", true);
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "") {
+    oReq.open("GET", "/webgr/bin-test.dat", true);
+  } else {
+    oReq.open("GET", "http://astro.ru.nl/~cbrinker/webgr/bin-test.dat", true);
+  }
   oReq.responseType = "arraybuffer";
   
   var deflectionArray;
