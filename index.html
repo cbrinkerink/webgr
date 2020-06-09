@@ -2,17 +2,16 @@
 <html>
 <head>
 <title>WebGR</title>
-<link rel="stylesheet" type="text/css" href="introjs.css">
 <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-<h1 id="titletext" data-step="1" data-intro="The title of the page.">Flying around a Schwarzschild black hole</h1>
+<h1 id="titletext">Flying around a Schwarzschild black hole</h1>
 <p>Use the canvas below to fly around a Schwarzschild black hole in real time!</p>
-<a class="button" href="javascript:void(0);" onclick="javascript:introJs().start();">Help and instructions for use</a>
-<div>Select an image file:<input type="file" id="fileInput" data-step="2" data-intro="Use this to select your own background image to use."></div>
+<div>Select an image file:<input type="file" id="fileInput"></div>
 <div class="container">
-<canvas id="canvas" width="1200" height="600" style="background: black;"></canvas>
-<canvas id="textcanvas" width="1200" height="600" data-step="3" data-intro="The main viewport, where you can see what your environment looks like. Click on it with your mouse cursor to give it focus and to look around using the mouse. W/A/S/D or cursor keys let you move around."></canvas>
+<canvas id="canvas" width="1200" height="600" style="position:absolute; z-index:8"></canvas>
+<canvas id="textcanvas" width="1200" height="600" style="position:absolute; z-index:10"></canvas>
+<canvas id="overlaycanvas" width="1200" height="600" style="position:absolute; z-index:9"></canvas>
 </div>
 <!-- vertex shader -->
 <script id="2d-vertex-shader" type="x-shader/x-vertex">#version 300 es
@@ -197,11 +196,16 @@ void main() {
 
   // Debug stuff goes here
   //fragColor = vec4(mod(camvec_cartesian.x, 0.1) * 10., mod(camvec_cartesian.y, 0.1) * 10., mod(camvec_cartesian.z,0.1) * 10., 1.0);
+
+  
+
+
+  
+
 }
 </script>
 
 <script src="math.min.js"></script>
-<script type="text/javascript" src="intro.js"></script>
 <script src="webgl.js"></script>
 </body>
 </html>
