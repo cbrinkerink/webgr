@@ -414,6 +414,13 @@ function checkInput() {
       width = width - 100;
       document.getElementById("canvas").width = width;
       document.getElementById("textcanvas").width = width;
+      document.getElementById("overlaycanvas").width = width;
+      var imageObj = new Image();
+      function drawPattern() {
+        ctx2.drawImage(imageObj, 0, 0, width, height);
+      }
+      imageObj.onload = drawPattern;
+      imageObj.src = "spaceship-cockpit-RRL.png"; //transparent png
       ctx = textcanvas.getContext("2d");
       lc = gl.getUniformLocation(program, "resolution");
       gl.uniform2f(lc, width, height);
@@ -428,6 +435,13 @@ function checkInput() {
     width = width + 100;
     document.getElementById("canvas").width = width;
     document.getElementById("textcanvas").width = width;
+    document.getElementById("overlaycanvas").width = width;
+    var imageObj = new Image();
+    function drawPattern() {
+      ctx2.drawImage(imageObj, 0, 0, width, height);
+    }
+    imageObj.onload = drawPattern;
+    imageObj.src = "spaceship-cockpit-RRL.png"; //transparent png
     ctx = textcanvas.getContext("2d");
     lc = gl.getUniformLocation(program, "resolution");
     gl.uniform2f(lc, width, height);
@@ -441,6 +455,13 @@ function checkInput() {
       height = height - 50;
       document.getElementById("canvas").height = height;
       document.getElementById("textcanvas").height = height;
+      document.getElementById("overlaycanvas").height = height;
+      var imageObj = new Image();
+      function drawPattern() {
+        ctx2.drawImage(imageObj, 0, 0, width, height);
+      }
+      imageObj.onload = drawPattern;
+      imageObj.src = "spaceship-cockpit-RRL.png"; //transparent png
       ctx = textcanvas.getContext("2d");
       lc = gl.getUniformLocation(program, "resolution");
       gl.uniform2f(lc, width, height);
@@ -455,6 +476,13 @@ function checkInput() {
     height = height + 50;
     document.getElementById("canvas").height = height;
     document.getElementById("textcanvas").height = height;
+    document.getElementById("overlaycanvas").height = height;
+    var imageObj = new Image();
+    function drawPattern() {
+      ctx2.drawImage(imageObj, 0, 0, width, height);
+    }
+    imageObj.onload = drawPattern;
+    imageObj.src = "spaceship-cockpit-RRL.png"; //transparent png
     ctx = textcanvas.getContext("2d");
     lc = gl.getUniformLocation(program, "resolution");
     gl.uniform2f(lc, width, height);
@@ -819,22 +847,25 @@ function main() {
   // make a 2D context for it
   ctx2 = overlaycanvas.getContext("2d");
 
-  ctx2.beginPath();
-  ctx2.moveTo(0,0)
-  ctx2.lineTo(0,210);
-  ctx2.lineTo(280,210);
-  ctx2.lineTo(280,0);
+  //ctx2.beginPath();
+  //ctx2.moveTo(0,0)
+  //ctx2.lineTo(0,130);
+  //ctx2.lineTo(130,130);
+  //ctx2.lineTo(130,0);
   //ctx2.fillStyle = "#115511" 
   //ctx2.fill();
   var imageObj = new Image();
   function drawPattern() {
-     var pattern = ctx2.createPattern(imageObj, "repeat");
-     ctx2.fillStyle = pattern;
-     ctx2.fill();
+    //var pattern = ctx2.createPattern(imageObj, "repeat");
+    //ctx2.fillStyle = pattern;
+    //ctx2.fill();
+    ctx2.drawImage(imageObj, 0, 0, width, height);
   }
   imageObj.onload = drawPattern;
-  imageObj.src = "http://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png"; //transparent png
+  //imageObj.src = "http://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png"; //transparent png
 
+  //imageObj.src = "RRL_WebGR_logo.png"; //transparent png
+  imageObj.src = "spaceship-cockpit-RRL.png"; //transparent png
 
   fps = 900.;
   fpsInterval = 1000 / fps;
